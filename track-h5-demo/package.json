@@ -1,0 +1,17 @@
+{
+  "name": "track-h5-demo",
+  "version": "1.0.0",
+  "description": "H5埋点演示页面",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.4",
+    "vite": "^5.1.6"
+  }
+}
