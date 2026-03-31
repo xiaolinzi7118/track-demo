@@ -150,23 +150,42 @@
               添加参数
             </el-button>
             <el-table :data="paramsList" border size="small" style="margin-top: 10px;">
-              <el-table-column prop="name" label="参数名称" />
-              <el-table-column prop="type" label="参数类型">
+              <el-table-column prop="paramName" label="参数名称" width="120">
                 <template #default="{ row }">
-                  <el-select v-model="row.type" size="small" style="width: 100%;">
-                    <el-option label="字符串" value="string" />
-                    <el-option label="数字" value="number" />
-                    <el-option label="布尔值" value="boolean" />
-                    <el-option label="对象" value="object" />
+                  <el-input v-model="row.paramName" size="small" placeholder="参数名" />
+                </template>
+              </el-table-column>
+              <el-table-column prop="sourceType" label="来源类型" width="140">
+                <template #default="{ row }">
+                  <el-select v-model="row.sourceType" size="small" style="width: 100%;">
+                    <el-option label="节点内容" value="node_content" :disabled="form.eventType !== 'click'" />
+                    <el-option label="全局对象" value="global_object" />
+                    <el-option label="本地缓存" value="local_cache" />
+                    <el-option label="静态值" value="static_value" />
                   </el-select>
                 </template>
               </el-table-column>
-              <el-table-column prop="required" label="是否必填" width="100">
+              <el-table-column prop="sourceValue" label="变量路径/值" width="180">
                 <template #default="{ row }">
-                  <el-switch v-model="row.required" />
+                  <el-input
+                    v-if="row.sourceType !== 'node_content'"
+                    v-model="row.sourceValue"
+                    size="small"
+                    :placeholder="getSourcePlaceholder(row.sourceType)"
+                  />
+                  <span v-else class="hint-text">自动获取</span>
                 </template>
               </el-table-column>
-              <el-table-column prop="description" label="描述" />
+              <el-table-column prop="defaultValue" label="默认值" width="120">
+                <template #default="{ row }">
+                  <el-input v-model="row.defaultValue" size="small" placeholder="获取失败时使用" />
+                </template>
+              </el-table-column>
+              <el-table-column prop="description" label="描述" width="150">
+                <template #default="{ row }">
+                  <el-input v-model="row.description" size="small" placeholder="描述" />
+                </template>
+              </el-table-column>
               <el-table-column label="操作" width="80">
                 <template #default="{ $index }">
                   <el-button link type="danger" size="small" @click="removeParam($index)">删除</el-button>
@@ -308,15 +327,25 @@ const handleDelete = (row) => {
 
 const addParam = () => {
   paramsList.value.push({
-    name: '',
-    type: 'string',
-    required: false,
+    paramName: '',
+    sourceType: 'static_value',
+    sourceValue: '',
+    defaultValue: '',
     description: ''
   })
 }
 
 const removeParam = (index) => {
   paramsList.value.splice(index, 1)
+}
+
+const getSourcePlaceholder = (sourceType) => {
+  const placeholders = {
+    global_object: '如: userInfo.id',
+    local_cache: '如: auth_token',
+    static_value: '如: 1.0.0'
+  }
+  return placeholders[sourceType] || ''
 }
 
 const handleSubmit = async () => {
@@ -373,5 +402,10 @@ handleSearch()
 
 .params-config {
   width: 100%;
+}
+
+.hint-text {
+  color: #909399;
+  font-size: 12px;
 }
 </style>

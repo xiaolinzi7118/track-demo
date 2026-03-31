@@ -75,22 +75,40 @@ class TrackCore {
 
   handleClick(e) {
     const target = e.target
-    const trackId = target.getAttribute('data-track-id') || 
+    const trackId = target.getAttribute('data-track-id') ||
                     target.getAttribute('track-id') ||
                     this.findParentTrackId(target)
 
     if (trackId) {
       const pageUrl = getPageUrl()
       const matchedConfig = this.findMatchedConfig(pageUrl, 'click', trackId)
-      
+
       if (matchedConfig) {
-        const params = {
+        // 解析参数配置
+        let paramsConfig = []
+        try {
+          paramsConfig = matchedConfig.params ? JSON.parse(matchedConfig.params) : []
+        } catch (err) {
+          if (this.config.debug) {
+            console.warn('Failed to parse params config:', err)
+          }
+        }
+
+        // 构建基础参数
+        const baseParams = {
           elementTag: target.tagName,
           elementText: target.innerText?.substring(0, 50),
           elementClass: target.className,
           elementId: target.id
         }
-        this.track(matchedConfig.eventCode, 'click', params)
+
+        // 根据配置动态获取参数
+        const dynamicParams = this.buildParams(paramsConfig, target)
+
+        // 合并参数
+        const finalParams = { ...baseParams, ...dynamicParams }
+
+        this.track(matchedConfig.eventCode, 'click', finalParams)
       } else if (this.config.debug) {
         console.log('Click event not tracked - no matching config found for trackId:', trackId)
       }
@@ -113,11 +131,31 @@ class TrackCore {
   trackPageView() {
     const pageUrl = getPageUrl()
     const matchedConfig = this.findMatchedConfig(pageUrl, 'page_view')
-    
+
     if (matchedConfig) {
-      this.track(matchedConfig.eventCode, 'page_view', {
+      // 解析参数配置
+      let paramsConfig = []
+      try {
+        paramsConfig = matchedConfig.params ? JSON.parse(matchedConfig.params) : []
+      } catch (err) {
+        if (this.config.debug) {
+          console.warn('Failed to parse params config:', err)
+        }
+      }
+
+      // 过滤掉 node_content 类型的参数（仅点击事件支持）
+      const validParamsConfig = paramsConfig.filter(p => p.sourceType !== 'node_content')
+
+      const baseParams = {
         pageTitle: document.title
-      })
+      }
+
+      // 根据配置动态获取参数（无目标元素）
+      const dynamicParams = this.buildParams(validParamsConfig, null)
+
+      const finalParams = { ...baseParams, ...dynamicParams }
+
+      this.track(matchedConfig.eventCode, 'page_view', finalParams)
     }
   }
 
@@ -224,6 +262,132 @@ class TrackCore {
 
   getSessionId() {
     return this.sessionId
+  }
+
+  // ===== 参数获取方法 =====
+
+  /**
+   * 根据配置动态获取参数值
+   * @param {Object} paramConfig - 参数配置对象
+   * @param {Element} targetElement - 点击目标元素（仅node_content类型需要）
+   * @returns {any} 参数值
+   */
+  getParamValue(paramConfig, targetElement = null) {
+    const { sourceType, sourceValue, defaultValue, paramName } = paramConfig
+    let value = defaultValue || ''
+
+    try {
+      switch (sourceType) {
+        case 'node_content':
+          value = this.getNodeContent(targetElement)
+          break
+        case 'global_object':
+          value = this.getGlobalObjectValue(sourceValue)
+          break
+        case 'local_cache':
+          value = this.getLocalCacheValue(sourceValue)
+          break
+        case 'static_value':
+          value = sourceValue
+          break
+        default:
+          value = defaultValue || ''
+      }
+    } catch (error) {
+      if (this.config.debug) {
+        console.warn(`[TrackSDK] Failed to get param value for ${paramName}:`, error)
+      }
+      value = defaultValue || ''
+    }
+
+    return value
+  }
+
+  /**
+   * 获取节点内容（点击事件专用）
+   * @param {Element} element - DOM元素
+   * @returns {string} 内容文本
+   */
+  getNodeContent(element) {
+    if (!element) return ''
+
+    // 获取元素及其子元素的文本内容，多个子节点用逗号拼接
+    const textContent = element.innerText || element.textContent || ''
+
+    // 清理多余空白，逗号分隔
+    const contents = textContent
+      .split('\n')
+      .map(s => s.trim())
+      .filter(s => s)
+      .join(',')
+
+    return contents.substring(0, 200) // 限制长度
+  }
+
+  /**
+   * 获取全局对象值
+   * @param {string} path - 属性路径，如 "userInfo.id"
+   * @returns {any} 值
+   */
+  getGlobalObjectValue(path) {
+    if (!path) return ''
+
+    const keys = path.split('.')
+    let value = window
+
+    for (const key of keys) {
+      if (value === null || value === undefined) {
+        return ''
+      }
+      value = value[key]
+    }
+
+    return value !== undefined && value !== null ? value : ''
+  }
+
+  /**
+   * 获取localStorage缓存值
+   * @param {string} key - localStorage的key
+   * @returns {string} 缓存值
+   */
+  getLocalCacheValue(key) {
+    if (!key) return ''
+
+    const value = localStorage.getItem(key)
+
+    // 尝试解析JSON
+    if (value) {
+      try {
+        return JSON.parse(value)
+      } catch {
+        return value
+      }
+    }
+
+    return ''
+  }
+
+  /**
+   * 根据参数配置构建参数对象
+   * @param {Array} paramsConfig - 参数配置数组
+   * @param {Element} targetElement - 目标元素
+   * @returns {Object} 参数对象
+   */
+  buildParams(paramsConfig, targetElement = null) {
+    const params = {}
+
+    if (!paramsConfig || !Array.isArray(paramsConfig)) {
+      return params
+    }
+
+    paramsConfig.forEach(config => {
+      const { paramName } = config
+      if (paramName) {
+        params[paramName] = this.getParamValue(config, targetElement)
+      }
+    })
+
+    return params
   }
 }
 
