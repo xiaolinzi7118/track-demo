@@ -31,6 +31,10 @@
             <el-icon><User /></el-icon>
             <span>用户管理</span>
           </el-menu-item>
+          <el-menu-item index="/system/reset-data">
+            <el-icon><Delete /></el-icon>
+            <span>重置数据</span>
+          </el-menu-item>
         </el-sub-menu>
       </el-menu>
     </el-aside>

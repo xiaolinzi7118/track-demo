@@ -110,4 +110,9 @@ public class TrackDataService {
         
         return Result.success(result);
     }
+
+    public Result<Void> clearAll() {
+        trackDataRepository.deleteAll();
+        return Result.success();
+    }
 }

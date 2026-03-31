@@ -55,4 +55,9 @@ public class TrackConfigController {
     public Result<Map<String, Object>> statistics() {
         return trackConfigService.statistics();
     }
+
+    @PostMapping("/clear")
+    public Result<Void> clear() {
+        return trackConfigService.clearAll();
+    }
 }

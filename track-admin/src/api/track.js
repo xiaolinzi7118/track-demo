@@ -75,3 +75,17 @@ export function getTrackDataTrend() {
     method: 'get'
   })
 }
+
+export function clearTrackConfig() {
+  return request({
+    url: '/track-config/clear',
+    method: 'post'
+  })
+}
+
+export function clearTrackData() {
+  return request({
+    url: '/track-data/clear',
+    method: 'post'
+  })
+}

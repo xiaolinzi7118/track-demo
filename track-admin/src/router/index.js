@@ -36,6 +36,12 @@ const routes = [
         name: 'SystemUser',
         component: () => import('../views/system/user.vue'),
         meta: { title: '用户管理' }
+      },
+      {
+        path: 'system/reset-data',
+        name: 'SystemResetData',
+        component: () => import('../views/system/reset-data.vue'),
+        meta: { title: '重置数据' }
       }
     ]
   }

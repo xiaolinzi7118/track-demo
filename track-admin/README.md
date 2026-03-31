@@ -76,7 +76,8 @@ track-admin/
 │   │   ├── track-data/
 │   │   │   └── index.vue        # 数据回检
 │   │   └── system/
-│   │       └── user.vue         # 用户管理
+│       ├── user.vue         # 用户管理
+│       └── reset-data.vue   # 重置数据
 │   ├── App.vue
 │   └── main.js                  # 入口文件
 ├── index.html
@@ -112,6 +113,11 @@ track-admin/
 - 多条件筛选（事件编码、类型、用户ID）
 - 参数详情展示
 - 数据统计概览
+
+### 5. 系统管理
+
+- 用户管理
+- 重置数据：提供清空埋点配置表和数据回检表的功能
 
 ## 主要页面说明
 

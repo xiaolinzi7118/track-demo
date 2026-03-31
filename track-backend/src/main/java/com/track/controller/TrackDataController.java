@@ -51,4 +51,9 @@ public class TrackDataController {
     public Result<List<Map<String, Object>>> getTrendData() {
         return trackDataService.getTrendData();
     }
+
+    @PostMapping("/clear")
+    public Result<Void> clear() {
+        return trackDataService.clearAll();
+    }
 }
