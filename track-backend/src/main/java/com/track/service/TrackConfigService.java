@@ -59,6 +59,7 @@ public class TrackConfigService {
     }
 
     public Result<TrackConfig> add(TrackConfig config) {
+        config.setId(null); // 确保是新增操作
         config.setCreateTime(LocalDateTime.now());
         config.setUpdateTime(LocalDateTime.now());
         if (config.getStatus() == null) {

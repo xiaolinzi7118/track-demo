@@ -257,6 +257,7 @@ const handleReset = () => {
 
 const handleAdd = () => {
   isEdit.value = false
+  form.id = undefined
   form.eventName = ''
   form.eventCode = ''
   form.eventType = ''

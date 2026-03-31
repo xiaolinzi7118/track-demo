@@ -140,11 +140,12 @@ class TrackCore {
     return this.currentTrackConfig.find(config => {
       if (config.eventType !== eventType) return false
       if (config.status !== 1) return false
-      
+
       if (trackId) {
-        return config.trackId === trackId
+        // 使用 eventCode 匹配 data-track-id
+        return config.eventCode === trackId
       }
-      
+
       return matchUrlPattern(url, config.urlPattern)
     })
   }
