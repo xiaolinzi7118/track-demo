@@ -5,7 +5,7 @@
 ## 功能特性
 
 - ✅ 页面曝光自动追踪（含停留时长统计）
-- ✅ 点击交互自动追踪（声明式）
+- ✅ 点击交互自动追踪（声明式，受埋点配置控制）
 - ✅ 自定义事件上报
 - ✅ 批量上报与失败重试
 - ✅ 会话管理与用户标识
@@ -176,7 +176,13 @@ console.log('当前会话ID:', sessionId)
 </div>
 ```
 
-SDK会自动查找点击元素及其父元素上的 `data-track-id` 属性，找到后自动上报点击事件。
+**重要说明**：
+SDK会自动查找点击元素及其父元素上的 `data-track-id` 属性，但只有在埋点配置中存在对应的 `trackId` 且状态为启用时，才会上报点击事件。
+
+配置要求：
+1. 在埋点管理后台创建点击类型的埋点配置
+2. 配置 `trackId` 字段，值与HTML元素上的 `data-track-id` 一致
+3. 确保配置状态为"启用"（status = 1）
 
 ## 自动上报说明
 
@@ -188,6 +194,9 @@ SDK会自动查找点击元素及其父元素上的 `data-track-id` 属性，找
 2. 单页应用路由变化时自动上报
 3. 页面可见性变化（从后台切回）时自动上报
 4. 自动记录页面停留时长
+
+**匹配规则**：
+SDK在初始化时会从后端拉取所有埋点配置，当页面URL匹配配置中的 `urlPattern` 且事件类型为 `page_view` 时，才会触发对应的自动上报。
 
 事件数据包含：
 ```javascript
@@ -203,9 +212,23 @@ SDK会自动查找点击元素及其父元素上的 `data-track-id` 属性，找
 }
 ```
 
+### 点击事件
+
+当 `autoTrack.click = true` 时：
+
+1. 监听整个文档的点击事件
+2. 查找点击元素及其父元素上的 `data-track-id` 属性
+3. 从埋点配置中匹配对应 `trackId` 的配置
+4. 只有找到匹配的配置且状态为启用时才上报
+
+**匹配规则**：
+- 事件类型必须为 `click`
+- 配置中的 `trackId` 必须与HTML元素上的 `data-track-id` 完全匹配
+- 配置状态必须为"启用"（status = 1）
+
 ### URL匹配规则
 
-SDK在初始化时会从后端拉取所有埋点配置，当页面URL匹配配置中的 `urlPattern` 时，才会触发对应的自动上报。
+对于页面曝光事件，SDK在初始化时会从后端拉取所有埋点配置，当页面URL匹配配置中的 `urlPattern` 时，才会触发对应的自动上报。
 
 匹配规则示例：
 
@@ -267,6 +290,7 @@ TrackSDK.init({
 [TrackSDK] Track config fetched: [{...}, {...}]
 [TrackSDK] Track event added to queue: {...}
 [TrackSDK] Track data reported successfully: [{...}]
+[TrackSDK] Click event not tracked - no matching config found for trackId: button_click
 ```
 
 ## 注意事项
@@ -276,8 +300,13 @@ TrackSDK.init({
 3. **数据合规**：请确保遵守当地数据保护法规（如GDPR、CCPA等）
 4. **性能影响**：SDK对性能影响极小，但建议不要过度埋点
 5. **测试环境**：建议在测试环境验证埋点配置后再发布到生产
+6. **点击事件配置**：点击事件需要在埋点配置中配置对应的 `trackId`，否则不会上报
 
 ## 版本历史
+
+- v1.1.0
+  - 点击事件现在受埋点配置控制，需要配置对应的 `trackId`
+  - 添加了调试日志，方便排查点击事件未上报的问题
 
 - v1.0.0
   - 初始版本

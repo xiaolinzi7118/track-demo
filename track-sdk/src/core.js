@@ -80,13 +80,20 @@ class TrackCore {
                     this.findParentTrackId(target)
 
     if (trackId) {
-      const params = {
-        elementTag: target.tagName,
-        elementText: target.innerText?.substring(0, 50),
-        elementClass: target.className,
-        elementId: target.id
+      const pageUrl = getPageUrl()
+      const matchedConfig = this.findMatchedConfig(pageUrl, 'click', trackId)
+      
+      if (matchedConfig) {
+        const params = {
+          elementTag: target.tagName,
+          elementText: target.innerText?.substring(0, 50),
+          elementClass: target.className,
+          elementId: target.id
+        }
+        this.track(matchedConfig.eventCode, 'click', params)
+      } else if (this.config.debug) {
+        console.log('Click event not tracked - no matching config found for trackId:', trackId)
       }
-      this.track(trackId, 'click', params)
     }
   }
 
@@ -127,12 +134,17 @@ class TrackCore {
     }
   }
 
-  findMatchedConfig(url, eventType) {
+  findMatchedConfig(url, eventType, trackId = null) {
     if (!this.currentTrackConfig) return null
 
     return this.currentTrackConfig.find(config => {
       if (config.eventType !== eventType) return false
       if (config.status !== 1) return false
+      
+      if (trackId) {
+        return config.trackId === trackId
+      }
+      
       return matchUrlPattern(url, config.urlPattern)
     })
   }
