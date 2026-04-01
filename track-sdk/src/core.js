@@ -74,10 +74,19 @@ class TrackCore {
   }
 
   handleClick(e) {
-    const target = e.target
-    const trackId = target.getAttribute('data-track-id') ||
-                    target.getAttribute('track-id') ||
-                    this.findParentTrackId(target)
+    let target = e.target
+    let trackId = target.getAttribute('data-track-id') ||
+                  target.getAttribute('track-id')
+
+    // 如果当前节点没有 track-id，查找父节点
+    if (!trackId) {
+      const parentElement = this.findParentTrackElement(target)
+      if (parentElement) {
+        target = parentElement
+        trackId = parentElement.getAttribute('data-track-id') ||
+                  parentElement.getAttribute('track-id')
+      }
+    }
 
     if (trackId) {
       const pageUrl = getPageUrl()
@@ -94,34 +103,28 @@ class TrackCore {
           }
         }
 
-        // 构建基础参数
-        const baseParams = {
-          elementTag: target.tagName,
-          elementText: target.innerText?.substring(0, 50),
-          elementClass: target.className,
-          elementId: target.id
-        }
-
-        // 根据配置动态获取参数
+        // 根据配置动态获取参数（不再有基础参数）
         const dynamicParams = this.buildParams(paramsConfig, target)
 
-        // 合并参数
-        const finalParams = { ...baseParams, ...dynamicParams }
-
-        this.track(matchedConfig.eventCode, 'click', finalParams)
+        this.track(matchedConfig.eventCode, 'click', dynamicParams)
       } else if (this.config.debug) {
         console.log('Click event not tracked - no matching config found for trackId:', trackId)
       }
     }
   }
 
-  findParentTrackId(element) {
+  /**
+   * 查找父节点的 track 元素
+   * @param {Element} element - 起始元素
+   * @returns {Element|null} 带有 track-id 的父元素
+   */
+  findParentTrackElement(element) {
     let parent = element.parentElement
     while (parent && parent !== document.body) {
-      const trackId = parent.getAttribute('data-track-id') || 
+      const trackId = parent.getAttribute('data-track-id') ||
                       parent.getAttribute('track-id')
       if (trackId) {
-        return trackId
+        return parent
       }
       parent = parent.parentElement
     }
@@ -146,16 +149,10 @@ class TrackCore {
       // 过滤掉 node_content 类型的参数（仅点击事件支持）
       const validParamsConfig = paramsConfig.filter(p => p.sourceType !== 'node_content')
 
-      const baseParams = {
-        pageTitle: document.title
-      }
-
       // 根据配置动态获取参数（无目标元素）
       const dynamicParams = this.buildParams(validParamsConfig, null)
 
-      const finalParams = { ...baseParams, ...dynamicParams }
-
-      this.track(matchedConfig.eventCode, 'page_view', finalParams)
+      this.track(matchedConfig.eventCode, 'page_view', dynamicParams)
     }
   }
 
@@ -163,11 +160,10 @@ class TrackCore {
     const duration = Date.now() - this.pageEnterTime
     const pageUrl = getPageUrl()
     const matchedConfig = this.findMatchedConfig(pageUrl, 'page_view')
-    
+
     if (matchedConfig) {
       this.track(matchedConfig.eventCode + '_leave', 'page_view', {
-        duration: duration,
-        pageTitle: document.title
+        duration: duration
       }, duration)
     }
   }
