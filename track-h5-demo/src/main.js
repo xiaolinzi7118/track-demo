@@ -11,7 +11,7 @@ app.mount('#app')
 if (window.TrackSDK) {
   window.TrackSDK.init({
     serverUrl: 'http://localhost:8080',
-    appId: 'demo-app',
+    appId: 'cmb-app',
     debug: true,
     autoTrack: {
       pageView: true,

@@ -1,268 +1,207 @@
-# H5埋点演示页面
+# 招商银行H5埋点演示 (track-h5-demo)
 
-基于Vue3的H5埋点演示项目，展示埋点SDK的集成和使用方式。
-
-## 项目简介
-
-本项目是一个模拟电商H5页面，包含首页、商品列表、购物车和用户中心四个页面，用于演示埋点SDK的集成和各种埋点场景。
-
-## 技术栈
-
-- Vue 3.4
-- Vue Router 4
-- Vite
-
-## 快速开始
-
-```bash
-cd track-h5-demo
-
-# 安装依赖
-npm install
-
-# 启动开发服务器
-npm run dev
-
-# 构建生产版本
-npm run build
-```
-
-访问地址：http://localhost:3001
+基于 Vue 3 + Vue Router + Vite 构建的招商银行风格移动端H5应用，用于演示埋点SDK（track-sdk）的页面浏览和点击事件追踪功能。
 
 ## 项目结构
 
 ```
 track-h5-demo/
-├── src/
-│   ├── views/
-│   │   ├── Home.vue       # 首页
-│   │   ├── Product.vue    # 商品列表页
-│   │   ├── Cart.vue       # 购物车页
-│   │   └── User.vue       # 用户中心页
-│   ├── router/
-│   │   └── index.js       # 路由配置
-│   ├── App.vue
-│   └── main.js            # 入口文件（SDK初始化）
-├── index.html
-├── vite.config.js
+├── index.html                     # 入口HTML，加载 track-sdk
+├── vite.config.js                 # Vite配置（端口3001 + API代理到8081）
 ├── package.json
-└── README.md
+├── track-sdk.min.js               # 埋点SDK（静态加载）
+└── src/
+    ├── main.js                    # 应用入口 + SDK初始化
+    ├── App.vue                    # 根组件（全局样式 + CMB色彩变量）
+    ├── router/index.js            # 路由配置 + 登录守卫
+    ├── utils/
+    │   ├── request.js             # Axios封装
+    │   └── auth.js                # 登录状态管理（localStorage）
+    ├── api/
+    │   ├── user.js                # 用户接口（登录/登出/用户信息）
+    │   ├── product.js             # 理财产品接口
+    │   └── account.js             # 账户信息接口
+    ├── components/
+    │   └── TabBar.vue             # 共享底部导航栏
+    └── views/
+        ├── Login.vue              # 登录页
+        ├── Home.vue               # 首页（资产总览/快捷操作/理财推荐）
+        ├── Wealth.vue             # 理财产品列表页
+        ├── Life.vue               # 生活服务页
+        └── Mine.vue               # 我的（个人信息/菜单/退出登录）
 ```
 
-## SDK集成示例
+## 页面说明
 
-### 1. 引入SDK
+### 登录页 (`/login`)
+- 用户名密码登录，调用 bank-backend API 验证
+- 登录成功后将用户信息存储到 localStorage 并跳转首页
+- 默认账号：`admin` / `123456`
 
-在 `index.html` 中引入SDK：
+### 首页 (`/`)
+- 顶部红色头栏 "招商银行" + 通知铃铛
+- Banner推广（金葵花理财）
+- 快捷操作：转账汇款、理财产品、信用卡、贷款
+- 资产总览卡片（调用账户API）
+- 理财产品推荐（横向滚动卡片）
 
-```html
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>H5埋点演示</title>
-  <script src="http://localhost:3000/track-sdk/track-sdk.min.js"></script>
-</head>
+### 理财页 (`/wealth`)
+- 分类筛选Tab：全部/稳健型/进取型/基金/保险
+- 产品列表卡片（年化利率、期限、风险等级、起投金额）
+
+### 生活页 (`/life`)
+- 4x3服务图标网格：手机充值、生活缴费、电影票等12项服务
+- 推广Banner
+
+### 我的页 (`/mine`)
+- 用户头像、昵称、金葵花客户标识
+- 账户总资产显示
+- 菜单列表：我的账户、交易记录、我的理财、信用卡管理、安全设置、消息中心、关于我们
+- 退出登录按钮
+
+## 快速开始
+
+### 前置条件
+- Node.js >= 16
+- Java 8+
+- Maven 3.6+
+
+### 1. 启动 bank-backend（业务API，端口8081）
+
+```bash
+cd bank-backend
+mvn clean spring-boot:run
 ```
 
-### 2. 初始化SDK
+首次启动会自动：
+- 创建H2数据库 `./data/bankdb`
+- 初始化种子数据（admin用户、8个理财产品、1个储蓄卡账户）
 
-在 `main.js` 中初始化SDK：
+### 2. 启动 track-backend（埋点接收，端口8080）
+
+```bash
+cd track-backend
+mvn clean spring-boot:run
+```
+
+### 3. 启动前端（端口3001）
+
+```bash
+cd track-h5-demo
+npm install
+npm run dev
+```
+
+打开 http://localhost:3001 即可体验。
+
+## API接口
+
+所有API由 bank-backend 提供，前端通过 Vite 代理 `/api` 到 `http://localhost:8081`。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/auth/login` | 登录 |
+| POST | `/api/auth/logout` | 登出 |
+| GET | `/api/auth/userinfo?userId=` | 获取用户信息 |
+| GET | `/api/financial-product/list?category=&pageNum=&pageSize=` | 理财产品列表 |
+| GET | `/api/financial-product/detail?id=` | 理财产品详情 |
+| GET | `/api/account/summary?userId=` | 账户资产总览 |
+
+## 埋点集成
+
+track-sdk 通过 `index.html` 中的 `<script>` 标签静态加载，在 `main.js` 中初始化：
 
 ```javascript
-import { createApp } from 'vue'
-import App from './App.vue'
-import router from './router'
-
-const app = createApp(App)
-app.use(router)
-app.mount('#app')
-
-// SDK初始化
-if (window.TrackSDK) {
-  window.TrackSDK.init({
-    serverUrl: 'http://localhost:3000',
-    appId: 'demo-app',
-    debug: true,  // 开启调试模式，控制台会输出日志
-    autoTrack: {
-      pageView: true,
-      click: true
-    }
-  })
-}
-```
-
-## 埋点场景示例
-
-### 场景一：声明式点击埋点
-
-在HTML元素上添加 `data-track-id` 属性，点击时自动上报：
-
-```html
-<!-- 首页-商品卡片点击 -->
-<div 
-  class="product-item" 
-  v-for="item in products" 
-  :key="item.id"
-  data-track-id="home_product_click"
-  @click="goToDetail(item)"
->
-  <img :src="item.image" :alt="item.name" />
-  <p class="product-name">{{ item.name }}</p>
-  <p class="product-price">¥{{ item.price }}</p>
-</div>
-
-<!-- 首页-功能按钮 -->
-<button 
-  class="btn btn-primary" 
-  data-track-id="home_btn_share" 
-  @click="handleShare"
->
-  分享
-</button>
-
-<!-- 底部导航 -->
-<div 
-  class="tab-item" 
-  data-track-id="tab_home"
-  @click="switchTab('home')"
->
-  <span class="icon">🏠</span>
-  <span>首页</span>
-</div>
-```
-
-### 场景二：手动调用API埋点
-
-在需要更复杂逻辑的场景，可手动调用API上报：
-
-```html
-<template>
-  <button @click="handleBuy">立即购买</button>
-</template>
-
-<script setup>
-const handleBuy = (product) => {
-  // 业务逻辑...
-  
-  // 手动上报埋点
-  if (window.TrackSDK) {
-    window.TrackSDK.trackClick('buy_now_click', {
-      productId: product.id,
-      productName: product.name,
-      price: product.price
-    })
+window.TrackSDK.init({
+  serverUrl: 'http://localhost:8080',  // 埋点数据上报地址（track-backend）
+  appId: 'cmb-app',
+  debug: true,
+  autoTrack: {
+    pageView: true,   // 自动页面浏览追踪
+    click: true       // 自动点击追踪（基于 data-track-id）
   }
-}
-</script>
+})
 ```
 
-### 场景三：页面曝光自动埋点
+所有可交互元素均添加了 `data-track-id` 属性，SDK 会自动捕获匹配的点击事件并批量上报到 track-backend。
 
-当配置了 `autoTrack.pageView = true` 时，SDK会自动追踪：
+## 埋点清单
 
-1. 页面首次加载
-2. 单页应用路由变化（如从首页跳转到商品页）
-3. 页面可见性变化（如从后台切回）
-
-配合管理平台的URL正则配置，可实现精细化的页面曝光统计。
-
-### 场景四：参数上报示例
-
-上报包含自定义参数的事件：
-
-```javascript
-// 搜索埋点
-const handleSearch = (keyword) => {
-  if (window.TrackSDK) {
-    window.TrackSDK.trackClick('product_search', {
-      keyword: keyword,
-      searchTime: new Date().toISOString(),
-      userId: 'user_10086'  // 可选：用户标识
-    })
-  }
-}
-
-// 加购埋点
-const handleAddToCart = (item) => {
-  if (window.TrackSDK) {
-    window.TrackSDK.trackClick('cart_add', {
-      productId: item.id,
-      productName: item.name,
-      quantity: 1,
-      unitPrice: item.price,
-      totalPrice: item.price
-    })
-  }
-}
-```
-
-### 场景五：用户标识设置
-
-```javascript
-// 用户登录后设置用户ID
-const onLoginSuccess = (userInfo) => {
-  if (window.TrackSDK) {
-    window.TrackSDK.setUserId(userInfo.userId)
-    window.TrackSDK.setUserInfo({
-      nickname: userInfo.nickname,
-      level: userInfo.level,
-      isVip: userInfo.isVip
-    })
-  }
-}
-```
-
-## 页面埋点说明
-
-### 首页（Home.vue）
-
-| 埋点ID | 触发条件 | 上报参数 |
-|--------|----------|----------|
-| home_product_click | 点击商品卡片 | 无（可通过手动上报添加） |
-| home_btn_share | 点击分享按钮 | 无 |
-| home_btn_collect | 点击收藏按钮 | 无 |
-| home_btn_like | 点击点赞按钮 | 无 |
-| tab_home | 点击首页tab | 无 |
-| tab_product | 点击商品tab | 无 |
-| tab_cart | 点击购物车tab | 无 |
-| tab_user | 点击我的tab | 无 |
-
-### 商品列表页（Product.vue）
-
+### 登录页
 | 埋点ID | 触发条件 |
 |--------|----------|
-| product_search | 搜索框输入（暂未实现主动上报，需添加@input或@submit） |
-| product_search_btn | 点击搜索按钮 |
-| product_tab_all | 点击全部标签 |
-| product_tab_new | 点击新品标签 |
-| product_item_click | 点击商品卡片 |
+| login_username_input | 点击用户名输入框 |
+| login_password_input | 点击密码输入框 |
+| login_submit_btn | 点击登录按钮 |
 
-### 购物车页（Cart.vue）
-
+### 首页
 | 埋点ID | 触发条件 |
 |--------|----------|
-| cart_minus | 点击减号按钮 |
-| cart_plus | 点击加号按钮 |
-| cart_delete | 点击删除按钮 |
-| cart_go_shopping | 空购物车去购物 |
-| cart_checkout | 点击结算按钮 |
+| home_banner | 点击Banner |
+| home_notification | 点击通知铃铛 |
+| home_action_transfer | 点击转账汇款 |
+| home_action_wealth | 点击理财产品 |
+| home_action_creditcard | 点击信用卡 |
+| home_action_loan | 点击贷款 |
+| home_account_summary | 点击资产卡片 |
+| home_wealth_more | 点击更多理财 |
+| home_product_recommend_{id} | 点击理财推荐产品 |
 
-### 用户中心页（User.vue）
-
+### 理财页
 | 埋点ID | 触发条件 |
 |--------|----------|
-| user_order_all | 查看全部订单 |
-| user_order_pay | 待付款 |
-| user_order_ship | 待发货 |
-| user_order_receive | 待收货 |
-| user_order_review | 待评价 |
-| user_order_service | 售后 |
-| user_menu_address | 地址管理 |
-| user_menu_coupon | 优惠券 |
-| user_menu_collect | 我的收藏 |
-| user_menu_history | 浏览记录 |
-| user_menu_service | 客服中心 |
-| user_menu_setting | 设置 |
+| wealth_tab_all | 点击全部Tab |
+| wealth_tab_steady | 点击稳健型Tab |
+| wealth_tab_aggressive | 点击进取型Tab |
+| wealth_tab_fund | 点击基金Tab |
+| wealth_tab_insurance | 点击保险Tab |
+| wealth_product_click_{id} | 点击产品卡片 |
+
+### 生活页
+| 埋点ID | 触发条件 |
+|--------|----------|
+| life_service_recharge | 点击手机充值 |
+| life_service_utility | 点击生活缴费 |
+| life_service_movie | 点击电影票 |
+| life_service_takeout | 点击外卖 |
+| life_service_bus | 点击公交地铁 |
+| life_service_bike | 点击共享单车 |
+| life_service_hotel | 点击酒店 |
+| life_service_flight | 点击机票 |
+| life_service_hospital | 点击医疗挂号 |
+| life_service_car | 点击车主服务 |
+| life_service_lottery | 点击彩票 |
+| life_service_more | 点击更多 |
+| life_promo_banner | 点击推广Banner |
+| life_promo_btn | 点击立即体验 |
+
+### 我的页
+| 埋点ID | 触发条件 |
+|--------|----------|
+| mine_balance_card | 点击资产卡片 |
+| mine_menu_account | 点击我的账户 |
+| mine_menu_transactions | 点击交易记录 |
+| mine_menu_wealth | 点击我的理财 |
+| mine_menu_creditcard | 点击信用卡管理 |
+| mine_menu_security | 点击安全设置 |
+| mine_menu_messages | 点击消息中心 |
+| mine_menu_about | 点击关于我们 |
+| mine_logout_btn | 点击退出登录 |
+
+### 底部导航
+| 埋点ID | 触发条件 |
+|--------|----------|
+| tab_home | 点击首页Tab |
+| tab_wealth | 点击理财Tab |
+| tab_life | 点击生活Tab |
+| tab_mine | 点击我的Tab |
+
+## 登录流程
+
+1. 用户在登录页输入账号密码 → 调用 `POST /api/auth/login`
+2. 登录成功 → 将 `userId` 和 `userInfo` 存入 localStorage
+3. 路由守卫检查 `userId`，未登录自动跳转 `/login`
+4. 退出登录 → 清除 localStorage → 跳转 `/login`
 
 ## 查看埋点数据
 
@@ -271,29 +210,3 @@ const onLoginSuccess = (userInfo) => {
 3. 登录后进入「埋点配置」页面，配置对应的埋点事件
 4. 在H5页面进行操作触发埋点
 5. 进入「数据回检」页面查看上报的数据
-
-## 常见问题
-
-### Q: 为什么点击元素没有上报？
-A: 请检查：
-1. SDK是否正确加载并初始化
-2. 元素上的 `data-track-id` 属性是否正确
-3. 控制台是否有报错信息
-4. 后端服务是否正常运行
-
-### Q: 页面曝光事件的停留时长如何统计？
-A: SDK通过监听页面可见性变化和路由切换来计算停留时长，数据包含在 `page_view_leave` 事件的 `duration` 字段中。
-
-### Q: 如何关联用户信息？
-A: 用户登录后调用 `TrackSDK.setUserId('user_id')`，后续上报的所有事件都会关联该用户ID。
-
-### Q: 单页应用路由切换会自动上报吗？
-A: 是的，SDK会监听 `popstate` 事件自动检测路由变化。
-
-## 最佳实践建议
-
-1. **事件命名规范**：使用统一前缀，如 `page_` 页面事件、`btn_` 按钮点击、`item_` 项点击
-2. **参数设计**：根据业务需要合理设计参数结构，便于后续分析
-3. **关键页面优先**：从核心转化路径（如商品详情、结算）开始埋点
-4. **数据验证**：测试环境验证后再发布，避免脏数据
-5. **文档维护**：维护埋点字典文档，记录每个埋点的含义和用途

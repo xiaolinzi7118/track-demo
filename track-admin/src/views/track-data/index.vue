@@ -18,7 +18,7 @@
             />
           </el-form-item>
           <el-form-item label="事件类型">
-            <el-select v-model="searchForm.eventType" clearable placeholder="请选择">
+            <el-select v-model="searchForm.eventType" clearable placeholder="请选择" style="width: 160px">
               <el-option label="页面曝光" value="page_view" />
               <el-option label="点击交互" value="click" />
             </el-select>
@@ -50,37 +50,35 @@
         border
         stripe
         style="width: 100%"
+        size="default"
       >
-        <el-table-column prop="eventCode" label="事件编码" />
-        <el-table-column prop="eventType" label="事件类型">
+        <el-table-column prop="eventCode" label="事件编码" min-width="140" show-overflow-tooltip />
+        <el-table-column prop="eventType" label="事件类型" width="110" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.eventType === 'page_view' ? 'success' : 'primary'">
+            <el-tag :type="row.eventType === 'page_view' ? 'success' : 'primary'" size="small">
               {{ row.eventType === 'page_view' ? '页面曝光' : '点击交互' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="url" label="页面URL" show-overflow-tooltip min-width="200" />
-        <el-table-column prop="userId" label="用户ID" />
-        <el-table-column prop="sessionId" label="会话ID" />
-        <el-table-column prop="duration" label="停留时长(ms)" v-if="searchForm.eventType === 'page_view'">
+        <el-table-column prop="url" label="页面URL" min-width="200" show-overflow-tooltip />
+        <el-table-column prop="userId" label="用户ID" width="100" align="center" show-overflow-tooltip />
+        <el-table-column prop="sessionId" label="会话ID" width="120" show-overflow-tooltip />
+        <el-table-column label="停留时长" width="110" align="right">
           <template #default="{ row }">
-            {{ row.duration || '-' }}
+            <span v-if="row.duration">{{ row.duration >= 1000 ? (row.duration / 1000).toFixed(1) + 's' : row.duration + 'ms' }}</span>
+            <span v-else class="text-muted">-</span>
           </template>
         </el-table-column>
-        <el-table-column prop="params" label="参数" show-overflow-tooltip min-width="200">
+        <el-table-column prop="eventTime" label="事件时间" width="180" align="center">
           <template #default="{ row }">
-            <el-popover placement="top-start" trigger="click" :width="400">
-              <template #default>
-                <pre>{{ formatParams(row.params) }}</pre>
-              </template>
-              <template #reference>
-                <span class="params-text">{{ row.params || '-' }}</span>
-              </template>
-            </el-popover>
+            {{ formatTime(row.eventTime) }}
           </template>
         </el-table-column>
-        <el-table-column prop="eventTime" label="事件时间" width="180" />
-        <el-table-column prop="ip" label="IP地址" />
+        <el-table-column label="操作" width="100" align="center" fixed="right">
+          <template #default="{ row }">
+            <el-button type="primary" link size="small" @click="handleDetail(row)">详情</el-button>
+          </template>
+        </el-table-column>
       </el-table>
 
       <div class="pagination">
@@ -95,6 +93,34 @@
         />
       </div>
     </el-card>
+
+    <!-- 详情弹窗 -->
+    <el-dialog v-model="detailVisible" title="埋点数据详情" width="750px" destroy-on-close>
+      <el-descriptions :column="1" border size="default" v-if="detailData">
+        <el-descriptions-item label="事件编码">{{ detailData.eventCode }}</el-descriptions-item>
+        <el-descriptions-item label="事件类型">
+          <el-tag :type="detailData.eventType === 'page_view' ? 'success' : 'primary'" size="small">
+            {{ detailData.eventType === 'page_view' ? '页面曝光' : '点击交互' }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="页面URL">{{ detailData.url || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="用户ID">{{ detailData.userId || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="会话ID">{{ detailData.sessionId || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="停留时长">
+          <span v-if="detailData.duration">{{ detailData.duration >= 1000 ? (detailData.duration / 1000).toFixed(1) + 's' : detailData.duration + 'ms' }}</span>
+          <span v-else>-</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="IP地址">{{ detailData.ip || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="User-Agent">{{ detailData.userAgent || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="事件时间">{{ formatTime(detailData.eventTime) }}</el-descriptions-item>
+        <el-descriptions-item label="上报参数">
+          <pre class="detail-params">{{ formatParams(detailData.params) }}</pre>
+        </el-descriptions-item>
+      </el-descriptions>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
 
     <el-card title="数据统计" style="margin-top: 20px;">
       <el-row :gutter="20">
@@ -151,6 +177,27 @@ const formatParams = (params) => {
   } catch {
     return params
   }
+}
+
+const formatTime = (time) => {
+  if (!time) return '-'
+  // Java LocalDateTime会丢失Z后缀，需要补上确保按UTC解析
+  let timeStr = time
+  if (typeof timeStr === 'string' && timeStr.includes('T') && !timeStr.endsWith('Z') && !timeStr.includes('+')) {
+    timeStr = timeStr + 'Z'
+  }
+  const d = new Date(timeStr)
+  if (isNaN(d.getTime())) return time
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
+}
+
+const detailVisible = ref(false)
+const detailData = ref(null)
+
+const handleDetail = (row) => {
+  detailData.value = row
+  detailVisible.value = true
 }
 
 const handleSearch = async () => {
@@ -219,6 +266,24 @@ fetchStatistics()
 
 .params-text:hover {
   text-decoration: underline;
+}
+
+.text-muted {
+  color: #c0c4cc;
+}
+
+.detail-params {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #333;
+  background: #f5f7fa;
+  padding: 10px;
+  border-radius: 4px;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .stat-item {
