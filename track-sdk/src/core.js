@@ -37,6 +37,10 @@ class TrackCore {
         if (this.config.debug) {
           console.log('Track config fetched:', this.currentTrackConfig)
         }
+        // 配置加载完成后触发首次页面曝光采集
+        if (this.config.autoTrack && this.config.autoTrack.pageView) {
+          this.trackPageView()
+        }
       }
     } catch (error) {
       console.error('Failed to fetch track config:', error)
@@ -153,7 +157,7 @@ class TrackCore {
     const { autoTrack } = this.config
 
     if (autoTrack.pageView) {
-      this.trackPageView()
+      // 首次 trackPageView 在 fetchTrackConfig 完成后触发
       window.addEventListener('popstate', () => {
         this.trackPageView()
       })
