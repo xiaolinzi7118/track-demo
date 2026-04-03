@@ -18,6 +18,10 @@
           <el-icon><Setting /></el-icon>
           <span>埋点配置</span>
         </el-menu-item>
+        <el-menu-item index="/api-interface">
+          <el-icon><Link /></el-icon>
+          <span>接口来源管理</span>
+        </el-menu-item>
         <el-menu-item index="/track-data">
           <el-icon><DataLine /></el-icon>
           <span>数据回检</span>

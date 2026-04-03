@@ -89,3 +89,43 @@ export function clearTrackData() {
     method: 'post'
   })
 }
+
+// ===== 接口来源管理 =====
+export function getApiInterfaceList(params) {
+  return request({
+    url: '/api-interface/list',
+    method: 'get',
+    params
+  })
+}
+
+export function getAllApiInterfaces() {
+  return request({
+    url: '/api-interface/all',
+    method: 'get'
+  })
+}
+
+export function addApiInterface(data) {
+  return request({
+    url: '/api-interface/add',
+    method: 'post',
+    data
+  })
+}
+
+export function updateApiInterface(data) {
+  return request({
+    url: '/api-interface/update',
+    method: 'post',
+    data
+  })
+}
+
+export function deleteApiInterface(id) {
+  return request({
+    url: '/api-interface/delete',
+    method: 'post',
+    data: { id }
+  })
+}

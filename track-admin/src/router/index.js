@@ -26,6 +26,12 @@ const routes = [
         meta: { title: '埋点配置' }
       },
       {
+        path: 'api-interface',
+        name: 'ApiInterface',
+        component: () => import('../views/api-interface/index.vue'),
+        meta: { title: '接口来源管理' }
+      },
+      {
         path: 'track-data',
         name: 'TrackData',
         component: () => import('../views/track-data/index.vue'),

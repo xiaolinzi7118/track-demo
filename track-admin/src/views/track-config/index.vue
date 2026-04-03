@@ -90,7 +90,7 @@
     <el-dialog
       v-model="dialogVisible"
       :title="isEdit ? '编辑配置' : '新增配置'"
-      width="800px"
+      width="850px"
       destroy-on-close
     >
       <el-form
@@ -159,16 +159,23 @@
                 <template #default="{ row }">
                   <el-select v-model="row.sourceType" size="small" style="width: 100%;">
                     <el-option label="节点内容" value="node_content" :disabled="form.eventType !== 'click'" />
+                    <el-option label="接口数据" value="api_data" :disabled="form.eventType !== 'click'" />
                     <el-option label="全局对象" value="global_object" />
                     <el-option label="本地缓存" value="local_cache" />
                     <el-option label="静态值" value="static_value" />
                   </el-select>
                 </template>
               </el-table-column>
-              <el-table-column prop="sourceValue" label="变量路径/值" width="180">
+              <el-table-column prop="sourceValue" label="变量路径/值" width="260">
                 <template #default="{ row }">
+                  <template v-if="row.sourceType === 'api_data'">
+                    <el-select v-model="row.interfaceId" size="small" style="width: 100%; margin-bottom: 4px;" placeholder="选择接口" clearable>
+                      <el-option v-for="item in interfaceOptions" :key="item.id" :label="item.name + ' (' + item.path + ')'" :value="item.id" />
+                    </el-select>
+                    <el-input v-model="row.sourceValue" size="small" placeholder="如: data.productName" />
+                  </template>
                   <el-input
-                    v-if="row.sourceType !== 'node_content'"
+                    v-else-if="row.sourceType !== 'node_content'"
                     v-model="row.sourceValue"
                     size="small"
                     :placeholder="getSourcePlaceholder(row.sourceType)"
@@ -206,7 +213,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getTrackConfigList, addTrackConfig, updateTrackConfig, deleteTrackConfig } from '../../api/track'
+import { getTrackConfigList, addTrackConfig, updateTrackConfig, deleteTrackConfig, getAllApiInterfaces } from '../../api/track'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -235,6 +242,19 @@ const form = reactive({
 })
 
 const paramsList = ref([])
+const interfaceOptions = ref([])
+
+const fetchInterfaces = async () => {
+  try {
+    const res = await getAllApiInterfaces()
+    if (res.code === 200) {
+      interfaceOptions.value = res.data || []
+    }
+  } catch (error) {
+    console.error('Failed to fetch interfaces:', error)
+  }
+}
+fetchInterfaces()
 
 const rules = reactive({
   eventName: [
@@ -297,13 +317,13 @@ const handleEdit = (row) => {
   form.description = row.description
   form.urlPattern = row.urlPattern
   form.status = row.status
-  
+
   try {
     paramsList.value = row.params ? JSON.parse(row.params) : []
   } catch {
     paramsList.value = []
   }
-  
+
   dialogVisible.value = true
 }
 
@@ -330,6 +350,7 @@ const addParam = () => {
     paramName: '',
     sourceType: 'static_value',
     sourceValue: '',
+    interfaceId: null,
     defaultValue: '',
     description: ''
   })
@@ -343,19 +364,29 @@ const getSourcePlaceholder = (sourceType) => {
   const placeholders = {
     global_object: '如: userInfo.id',
     local_cache: '如: auth_token',
-    static_value: '如: 1.0.0'
+    static_value: '如: 1.0.0',
+    api_data: '响应数据字段路径'
   }
   return placeholders[sourceType] || ''
 }
 
 const handleSubmit = async () => {
   if (!formRef.value) return
-  
+
   await formRef.value.validate(async (valid) => {
     if (valid) {
       submitLoading.value = true
-      form.params = JSON.stringify(paramsList.value)
-      
+
+      // 为 api_data 类型参数补充 interfacePath
+      const enrichedParams = paramsList.value.map(p => {
+        if (p.sourceType === 'api_data' && p.interfaceId) {
+          const iface = interfaceOptions.value.find(i => i.id === p.interfaceId)
+          return { ...p, interfacePath: iface ? iface.path : '' }
+        }
+        return { ...p }
+      })
+      form.params = JSON.stringify(enrichedParams)
+
       try {
         let res
         if (isEdit.value) {
@@ -363,7 +394,7 @@ const handleSubmit = async () => {
         } else {
           res = await addTrackConfig(form)
         }
-        
+
         if (res.code === 200) {
           ElMessage.success(isEdit.value ? '编辑成功' : '新增成功')
           dialogVisible.value = false

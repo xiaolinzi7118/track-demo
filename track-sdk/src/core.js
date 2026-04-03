@@ -14,10 +14,15 @@ class TrackCore {
     this.pageEnterTime = Date.now()
     this.currentTrackConfig = null
     this.isVisible = true
+    this.referencedPaths = []
+    this._interceptionSetup = false
+    this._pendingCache = new Map()
   }
 
   init() {
+    this.setupNetworkInterception()
     this.fetchTrackConfig()
+    this.fetchReferencedPaths()
     this.initAutoTrack()
     this.startFlushTimer()
     this.initVisibilityChange()
@@ -35,6 +40,112 @@ class TrackCore {
       }
     } catch (error) {
       console.error('Failed to fetch track config:', error)
+    }
+  }
+
+  async fetchReferencedPaths() {
+    try {
+      const response = await fetch(`${this.config.serverUrl}/api/api-interface/referenced-paths`)
+      const result = await response.json()
+      if (result.code === 200) {
+        this.referencedPaths = result.data || []
+        // 将暂存区中匹配的响应转存到 localStorage
+        this.flushPendingCache()
+      }
+    } catch (error) {
+      if (this.config.debug) {
+        console.error('Failed to fetch referenced paths:', error)
+      }
+    }
+  }
+
+  /**
+   * 将暂存区中匹配 referencedPaths 的响应转存到 localStorage
+   */
+  flushPendingCache() {
+    if (this._pendingCache.size === 0) return
+    for (const [path, responseText] of this._pendingCache) {
+      if (this.referencedPaths.includes(path)) {
+        const cacheKey = 'track_api_' + path
+        try {
+          localStorage.setItem(cacheKey, responseText)
+          if (this.config.debug) {
+            console.log('[TrackSDK] Flushed pending cache for:', path)
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+    this._pendingCache.clear()
+  }
+
+  setupNetworkInterception() {
+    if (this._interceptionSetup) return
+    this._interceptionSetup = true
+
+    const self = this
+    const originalOpen = XMLHttpRequest.prototype.open
+    const originalSend = XMLHttpRequest.prototype.send
+
+    XMLHttpRequest.prototype.open = function(method, url, ...args) {
+      this._trackUrl = url
+      return originalOpen.call(this, method, url, ...args)
+    }
+
+    XMLHttpRequest.prototype.send = function(...args) {
+      const xhr = this
+
+      xhr.addEventListener('load', function() {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          self.handleXhrResponse(xhr._trackUrl, xhr.responseText)
+        }
+      })
+
+      return originalSend.call(this, ...args)
+    }
+  }
+
+  handleXhrResponse(url, responseText) {
+    if (!url) return
+
+    let urlPath = url
+    try {
+      if (urlPath.startsWith('http')) {
+        const urlObj = new URL(urlPath)
+        urlPath = urlObj.pathname
+      } else {
+        urlPath = urlPath.split('?')[0]
+      }
+    } catch (e) {
+      urlPath = urlPath.split('?')[0]
+    }
+
+    // 跳过 SDK 自身的请求
+    if (urlPath.startsWith('/api/track-config') || urlPath.startsWith('/api/track-data') || urlPath.startsWith('/api/api-interface')) {
+      return
+    }
+
+    try {
+      JSON.parse(responseText)
+    } catch (e) {
+      return // 非JSON不缓存
+    }
+
+    if (this.referencedPaths.length > 0 && this.referencedPaths.includes(urlPath)) {
+      // referencedPaths 已加载且匹配，直接缓存到 localStorage
+      const cacheKey = 'track_api_' + urlPath
+      try {
+        localStorage.setItem(cacheKey, responseText)
+        if (this.config.debug) {
+          console.log('[TrackSDK] Cached API response for:', urlPath)
+        }
+      } catch (e) {
+        // ignore
+      }
+    } else {
+      // referencedPaths 尚未加载，暂存到内存
+      this._pendingCache.set(urlPath, responseText)
     }
   }
 
@@ -146,8 +257,8 @@ class TrackCore {
         }
       }
 
-      // 过滤掉 node_content 类型的参数（仅点击事件支持）
-      const validParamsConfig = paramsConfig.filter(p => p.sourceType !== 'node_content')
+      // 过滤掉仅点击事件支持的参数类型
+      const validParamsConfig = paramsConfig.filter(p => p.sourceType !== 'node_content' && p.sourceType !== 'api_data')
 
       // 根据配置动态获取参数（无目标元素）
       const dynamicParams = this.buildParams(validParamsConfig, null)
@@ -234,7 +345,7 @@ class TrackCore {
       })
 
       const result = await response.json()
-      
+
       if (this.config.debug) {
         if (result.code === 200) {
           console.log('Track data reported successfully:', data)
@@ -277,6 +388,9 @@ class TrackCore {
         case 'node_content':
           value = this.getNodeContent(targetElement)
           break
+        case 'api_data':
+          value = this.getApiDataValue(paramConfig)
+          break
         case 'global_object':
           value = this.getGlobalObjectValue(sourceValue)
           break
@@ -318,6 +432,48 @@ class TrackCore {
       .join(',')
 
     return contents.substring(0, 200) // 限制长度
+  }
+
+  /**
+   * 获取接口数据值（从缓存的接口响应中提取）
+   * @param {Object} paramConfig - 参数配置对象
+   * @returns {any} 参数值
+   */
+  getApiDataValue(paramConfig) {
+    const { interfacePath, sourceValue } = paramConfig
+    if (!interfacePath) return ''
+
+    const cacheKey = 'track_api_' + interfacePath
+    const cachedRaw = localStorage.getItem(cacheKey)
+    if (!cachedRaw) return ''
+
+    try {
+      const cachedData = JSON.parse(cachedRaw)
+      const value = this.resolveObjectPath(cachedData, sourceValue)
+      return value !== undefined && value !== null ? value : ''
+    } catch (e) {
+      if (this.config.debug) {
+        console.warn('[TrackSDK] Failed to read cached API data:', e)
+      }
+      return ''
+    }
+  }
+
+  /**
+   * 按路径解析对象的属性值
+   * @param {Object} obj - 目标对象
+   * @param {string} path - 属性路径，如 "data.productName"
+   * @returns {any} 属性值
+   */
+  resolveObjectPath(obj, path) {
+    if (!path || !obj) return undefined
+    const keys = path.split('.')
+    let value = obj
+    for (const key of keys) {
+      if (value === null || value === undefined) return undefined
+      value = value[key]
+    }
+    return value
   }
 
   /**
