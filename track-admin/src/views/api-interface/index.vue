@@ -3,7 +3,7 @@
     <template #header>
       <div class="card-header">
         <span>接口来源管理</span>
-        <el-button type="primary" @click="handleAdd">新增接口</el-button>
+        <el-button type="primary" @click="handleAdd" v-permission="'api-interface:add'">新增接口</el-button>
       </div>
     </template>
 
@@ -31,8 +31,8 @@
       <el-table-column prop="createTime" label="创建时间" width="180" />
       <el-table-column label="操作" width="150" align="center">
         <template #default="{ row }">
-          <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-          <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+          <el-button link type="primary" @click="handleEdit(row)" v-permission="'api-interface:edit'">编辑</el-button>
+          <el-button link type="danger" @click="handleDelete(row)" v-permission="'api-interface:delete'">删除</el-button>
         </template>
       </el-table-column>
     </el-table>

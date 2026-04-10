@@ -8,38 +8,33 @@
         :default-active="activeMenu"
         class="menu"
         router
+        background-color="#304156"
+        text-color="#bfcbd9"
+        active-text-color="#409EFF"
         @select="handleMenuSelect"
       >
-        <el-menu-item index="/dashboard">
-          <el-icon><House /></el-icon>
-          <span>仪表盘</span>
-        </el-menu-item>
-        <el-menu-item index="/track-config">
-          <el-icon><Setting /></el-icon>
-          <span>埋点配置</span>
-        </el-menu-item>
-        <el-menu-item index="/api-interface">
-          <el-icon><Link /></el-icon>
-          <span>接口来源管理</span>
-        </el-menu-item>
-        <el-menu-item index="/track-data">
-          <el-icon><DataLine /></el-icon>
-          <span>数据回检</span>
-        </el-menu-item>
-        <el-sub-menu index="/system">
-          <template #title>
-            <el-icon><Tools /></el-icon>
-            <span>系统管理</span>
-          </template>
-          <el-menu-item index="/system/user">
-            <el-icon><User /></el-icon>
-            <span>用户管理</span>
+        <template v-for="menu in menuList" :key="menu.id">
+          <!-- 有子菜单 -->
+          <el-sub-menu v-if="menu.children && menu.children.length > 0" :index="menu.path || String(menu.id)">
+            <template #title>
+              <el-icon><component :is="getIcon(menu.icon)" /></el-icon>
+              <span>{{ menu.menuName }}</span>
+            </template>
+            <el-menu-item
+              v-for="child in menu.children"
+              :key="child.id"
+              :index="child.path"
+            >
+              <el-icon><component :is="getIcon(child.icon)" /></el-icon>
+              <span>{{ child.menuName }}</span>
+            </el-menu-item>
+          </el-sub-menu>
+          <!-- 无子菜单 -->
+          <el-menu-item v-else :index="menu.path">
+            <el-icon><component :is="getIcon(menu.icon)" /></el-icon>
+            <span>{{ menu.menuName }}</span>
           </el-menu-item>
-          <el-menu-item index="/system/reset-data">
-            <el-icon><Delete /></el-icon>
-            <span>重置数据</span>
-          </el-menu-item>
-        </el-sub-menu>
+        </template>
       </el-menu>
     </el-aside>
     <el-container>
@@ -52,6 +47,7 @@
             <span class="user-info">
               <el-icon><User /></el-icon>
               <span>{{ userStore.userInfo.nickname || '管理员' }}</span>
+              <el-tag v-if="userStore.userInfo.roleName" size="small" style="margin-left: 4px">{{ userStore.userInfo.roleName }}</el-tag>
               <el-icon><CaretBottom /></el-icon>
             </span>
             <template #dropdown>
@@ -70,13 +66,29 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../store/user'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const menuList = ref([])
+
+const iconMap = {
+  'House': 'House',
+  'Setting': 'Setting',
+  'Link': 'Link',
+  'DataLine': 'DataLine',
+  'Tools': 'Tools',
+  'User': 'User',
+  'Lock': 'Lock',
+  'Delete': 'Delete'
+}
+
+const getIcon = (icon) => {
+  return iconMap[icon] || 'Menu'
+}
 
 const activeMenu = computed(() => {
   return route.path
@@ -93,8 +105,10 @@ const handleMenuSelect = (index) => {
   router.push(index)
 }
 
-onMounted(() => {
-  userStore.handleGetUserInfo()
+onMounted(async () => {
+  await userStore.handleGetUserInfo()
+  await userStore.handleGetMenus()
+  menuList.value = userStore.menus
 })
 </script>
 

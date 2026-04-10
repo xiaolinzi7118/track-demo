@@ -28,3 +28,43 @@ export function getMenus() {
     method: 'get'
   })
 }
+
+export function getUserList(params) {
+  return request({
+    url: '/user/list',
+    method: 'get',
+    params
+  })
+}
+
+export function addUser(data) {
+  return request({
+    url: '/user/add',
+    method: 'post',
+    data
+  })
+}
+
+export function updateUser(data) {
+  return request({
+    url: '/user/update',
+    method: 'post',
+    data
+  })
+}
+
+export function deleteUser(id) {
+  return request({
+    url: '/user/delete',
+    method: 'post',
+    data: { id }
+  })
+}
+
+export function resetPassword(id) {
+  return request({
+    url: '/user/reset-password',
+    method: 'post',
+    data: { id }
+  })
+}

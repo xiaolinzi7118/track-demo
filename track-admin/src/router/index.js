@@ -17,37 +17,43 @@ const routes = [
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('../views/dashboard/index.vue'),
-        meta: { title: '仪表盘' }
+        meta: { title: '仪表盘', permission: 'dashboard' }
       },
       {
         path: 'track-config',
         name: 'TrackConfig',
         component: () => import('../views/track-config/index.vue'),
-        meta: { title: '埋点配置' }
+        meta: { title: '埋点配置', permission: 'track-config' }
       },
       {
         path: 'api-interface',
         name: 'ApiInterface',
         component: () => import('../views/api-interface/index.vue'),
-        meta: { title: '接口来源管理' }
+        meta: { title: '接口来源管理', permission: 'api-interface' }
       },
       {
         path: 'track-data',
         name: 'TrackData',
         component: () => import('../views/track-data/index.vue'),
-        meta: { title: '数据回检' }
+        meta: { title: '数据回检', permission: 'track-data' }
       },
       {
         path: 'system/user',
         name: 'SystemUser',
         component: () => import('../views/system/user.vue'),
-        meta: { title: '用户管理' }
+        meta: { title: '用户管理', permission: 'system:user' }
+      },
+      {
+        path: 'system/role',
+        name: 'SystemRole',
+        component: () => import('../views/system/role.vue'),
+        meta: { title: '角色管理', permission: 'system:role' }
       },
       {
         path: 'system/reset-data',
         name: 'SystemResetData',
         component: () => import('../views/system/reset-data.vue'),
-        meta: { title: '重置数据' }
+        meta: { title: '重置数据', permission: 'system:reset-data' }
       }
     ]
   }
@@ -59,9 +65,8 @@ const router = createRouter({
 })
 
 router.beforeEach((to, from, next) => {
-  const userStore = useUserStore()
   const token = localStorage.getItem('token')
-  
+
   if (to.path === '/login') {
     if (token) {
       next('/')

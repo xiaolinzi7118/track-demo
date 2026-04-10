@@ -49,6 +49,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { useUserStore } from '../../store/user'
 
 const router = useRouter()
@@ -82,6 +83,8 @@ const handleLogin = async () => {
       
       if (result) {
         router.push('/')
+      } else {
+        ElMessage.error('登录失败，请检查用户名和密码')
       }
     }
   })

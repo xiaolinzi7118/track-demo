@@ -1,13 +1,16 @@
 package com.track.controller;
 
 import com.track.common.Result;
+import com.track.config.TokenStore;
 import com.track.entity.User;
 import com.track.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import javax.servlet.http.HttpServletRequest;
+import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -16,55 +19,70 @@ public class AuthController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private TokenStore tokenStore;
+
     @PostMapping("/login")
-    public Result<User> login(@RequestBody Map<String, String> request) {
+    public Result<Map<String, Object>> login(@RequestBody Map<String, String> request) {
         String username = request.get("username");
         String password = request.get("password");
-        return userService.login(username, password);
+        Result<User> loginResult = userService.login(username, password);
+        if (loginResult.getCode() != 200) {
+            return Result.error(loginResult.getCode(), loginResult.getMessage());
+        }
+
+        String token = UUID.randomUUID().toString().replace("-", "");
+        tokenStore.put(token, loginResult.getData().getId());
+
+        Map<String, Object> data = new java.util.HashMap<>();
+        data.put("token", token);
+        data.put("user", loginResult.getData());
+        return Result.success(data);
     }
 
     @PostMapping("/logout")
-    public Result<Void> logout() {
+    public Result<Void> logout(HttpServletRequest request) {
+        String token = extractToken(request);
+        if (token != null) {
+            tokenStore.remove(token);
+        }
         return Result.success();
     }
 
     @GetMapping("/userinfo")
-    public Result<Map<String, Object>> getUserInfo() {
-        Map<String, Object> userInfo = new HashMap<>();
-        userInfo.put("username", "admin");
-        userInfo.put("nickname", "管理员");
-        userInfo.put("avatar", "");
-        userInfo.put("roles", new String[]{"admin"});
+    public Result<Map<String, Object>> getUserInfo(HttpServletRequest request) {
+        Long userId = getCurrentUserId(request);
+        if (userId == null) {
+            return Result.error(401, "未登录");
+        }
+        Map<String, Object> userInfo = userService.getUserInfoWithPermissions(userId);
+        if (userInfo == null) {
+            return Result.error(401, "用户不存在");
+        }
         return Result.success(userInfo);
     }
 
     @GetMapping("/menus")
-    public Result<Map<String, Object>> getMenus() {
-        Map<String, Object> menus = new HashMap<>();
-        menus.put("menus", new Object[]{
-            createMenu("dashboard", "仪表盘", "Dashboard", "el-icon-s-home"),
-            createMenu("track-config", "埋点配置", "TrackConfig", "el-icon-setting"),
-            createMenu("track-data", "数据回检", "TrackData", "el-icon-data-line"),
-            createMenu("system", "系统管理", null, "el-icon-s-tools", new Object[]{
-                createMenu("user", "用户管理", "SystemUser", "el-icon-user")
-            })
-        });
+    public Result<List<com.track.entity.Menu>> getMenus(HttpServletRequest request) {
+        Long userId = getCurrentUserId(request);
+        if (userId == null) {
+            return Result.error(401, "未登录");
+        }
+        List<com.track.entity.Menu> menus = userService.getUserMenus(userId);
         return Result.success(menus);
     }
 
-    private Map<String, Object> createMenu(String path, String title, String component, String icon) {
-        return createMenu(path, title, component, icon, null);
+    private Long getCurrentUserId(HttpServletRequest request) {
+        String token = extractToken(request);
+        if (token == null) return null;
+        return tokenStore.getUserId(token);
     }
 
-    private Map<String, Object> createMenu(String path, String title, String component, String icon, Object[] children) {
-        Map<String, Object> menu = new HashMap<>();
-        menu.put("path", path);
-        menu.put("title", title);
-        menu.put("component", component);
-        menu.put("icon", icon);
-        if (children != null) {
-            menu.put("children", children);
+    private String extractToken(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        if (header != null && header.startsWith("Bearer ")) {
+            return header.substring(7);
         }
-        return menu;
+        return null;
     }
 }
