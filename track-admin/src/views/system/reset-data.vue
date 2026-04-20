@@ -8,11 +8,11 @@
       </template>
 
       <div class="reset-buttons">
-        <el-button type="danger" @click="clearTrackFn('config')" :loading="loading.config">
+        <el-button v-permission="'system-reset-data:operate'" type="danger" @click="clearTrackFn('config')" :loading="loading.config">
           <el-icon><Delete /></el-icon>
           清空埋点配置表
         </el-button>
-        <el-button type="danger" @click="clearTrackFn('data')" :loading="loading.data">
+        <el-button v-permission="'system-reset-data:operate'" type="danger" @click="clearTrackFn('data')" :loading="loading.data">
           <el-icon><Delete /></el-icon>
           清空数据回检表
         </el-button>

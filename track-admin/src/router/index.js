@@ -44,6 +44,12 @@ const routes = [
         meta: { title: '用户管理' }
       },
       {
+        path: 'system/role',
+        name: 'SystemRole',
+        component: () => import('../views/system/role.vue'),
+        meta: { title: '角色管理' }
+      },
+      {
         path: 'system/reset-data',
         name: 'SystemResetData',
         component: () => import('../views/system/reset-data.vue'),
@@ -61,7 +67,7 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
   const token = localStorage.getItem('token')
-  
+
   if (to.path === '/login') {
     if (token) {
       next('/')

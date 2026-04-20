@@ -1,6 +1,7 @@
 package com.track.controller;
 
 import com.track.common.Result;
+import com.track.common.PermissionChecker;
 import com.track.entity.ApiInterface;
 import com.track.service.ApiInterfaceService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,11 +18,15 @@ public class ApiInterfaceController {
     @Autowired
     private ApiInterfaceService apiInterfaceService;
 
+    @Autowired
+    private PermissionChecker permissionChecker;
+
     @GetMapping("/list")
     public Result<Page<ApiInterface>> list(
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
+        permissionChecker.checkPermission("api-interface:view");
         return apiInterfaceService.list(keyword, pageNum, pageSize);
     }
 
@@ -32,21 +37,25 @@ public class ApiInterfaceController {
 
     @GetMapping("/detail")
     public Result<ApiInterface> detail(@RequestParam Long id) {
+        permissionChecker.checkPermission("api-interface:view");
         return apiInterfaceService.detail(id);
     }
 
     @PostMapping("/add")
     public Result<ApiInterface> add(@RequestBody ApiInterface apiInterface) {
+        permissionChecker.checkPermission("api-interface:add");
         return apiInterfaceService.add(apiInterface);
     }
 
     @PostMapping("/update")
     public Result<ApiInterface> update(@RequestBody ApiInterface apiInterface) {
+        permissionChecker.checkPermission("api-interface:edit");
         return apiInterfaceService.update(apiInterface);
     }
 
     @PostMapping("/delete")
     public Result<Void> delete(@RequestBody Map<String, Long> request) {
+        permissionChecker.checkPermission("api-interface:delete");
         return apiInterfaceService.delete(request.get("id"));
     }
 

@@ -4,7 +4,7 @@
       <template #header>
         <div class="card-header">
           <span>埋点配置列表</span>
-          <el-button type="primary" @click="handleAdd">
+          <el-button v-permission="'track-config:add'" type="primary" @click="handleAdd">
             <el-icon><Plus /></el-icon>
             新增配置
           </el-button>
@@ -68,8 +68,8 @@
         <el-table-column prop="createTime" label="创建时间" width="180" />
         <el-table-column label="操作" width="200" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="danger" @click="handleDelete(row)">删除</el-button>
+            <el-button v-permission="'track-config:edit'" link type="primary" @click="handleEdit(row)">编辑</el-button>
+            <el-button v-permission="'track-config:delete'" link type="danger" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>

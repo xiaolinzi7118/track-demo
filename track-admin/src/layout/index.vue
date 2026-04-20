@@ -10,36 +10,26 @@
         router
         @select="handleMenuSelect"
       >
-        <el-menu-item index="/dashboard">
-          <el-icon><House /></el-icon>
-          <span>仪表盘</span>
-        </el-menu-item>
-        <el-menu-item index="/track-config">
-          <el-icon><Setting /></el-icon>
-          <span>埋点配置</span>
-        </el-menu-item>
-        <el-menu-item index="/api-interface">
-          <el-icon><Link /></el-icon>
-          <span>接口来源管理</span>
-        </el-menu-item>
-        <el-menu-item index="/track-data">
-          <el-icon><DataLine /></el-icon>
-          <span>数据回检</span>
-        </el-menu-item>
-        <el-sub-menu index="/system">
-          <template #title>
-            <el-icon><Tools /></el-icon>
-            <span>系统管理</span>
-          </template>
-          <el-menu-item index="/system/user">
-            <el-icon><User /></el-icon>
-            <span>用户管理</span>
+        <template v-for="menu in userStore.menus" :key="menu.id">
+          <el-sub-menu v-if="menu.menuType === 1 && menu.children && menu.children.length" :index="menu.path || menu.menuCode">
+            <template #title>
+              <el-icon><component :is="menu.icon" /></el-icon>
+              <span>{{ menu.menuName }}</span>
+            </template>
+            <el-menu-item
+              v-for="child in menu.children"
+              :key="child.id"
+              :index="child.path"
+            >
+              <el-icon><component :is="child.icon" /></el-icon>
+              <span>{{ child.menuName }}</span>
+            </el-menu-item>
+          </el-sub-menu>
+          <el-menu-item v-else-if="menu.menuType === 2" :index="menu.path">
+            <el-icon><component :is="menu.icon" /></el-icon>
+            <span>{{ menu.menuName }}</span>
           </el-menu-item>
-          <el-menu-item index="/system/reset-data">
-            <el-icon><Delete /></el-icon>
-            <span>重置数据</span>
-          </el-menu-item>
-        </el-sub-menu>
+        </template>
       </el-menu>
     </el-aside>
     <el-container>
@@ -93,8 +83,9 @@ const handleMenuSelect = (index) => {
   router.push(index)
 }
 
-onMounted(() => {
-  userStore.handleGetUserInfo()
+onMounted(async () => {
+  await userStore.handleGetUserInfo()
+  await userStore.fetchMenus()
 })
 </script>
 
