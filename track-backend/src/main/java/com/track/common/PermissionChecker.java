@@ -56,7 +56,7 @@ public class PermissionChecker {
         List<UserRole> userRoles = userRoleRepository.findByUserId(userId);
         for (UserRole ur : userRoles) {
             Role role = roleRepository.findById(ur.getRoleId()).orElse(null);
-            if (role != null && "admin".equals(role.getRoleCode())) {
+            if (role != null && "admin".equalsIgnoreCase(role.getRoleCode())) {
                 return true;
             }
         }

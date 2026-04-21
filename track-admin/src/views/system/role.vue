@@ -55,36 +55,44 @@
 
     <!-- 权限编辑弹窗 -->
     <el-dialog v-model="permDialogVisible" title="编辑权限" width="700px" @opened="loadPermissionData">
-      <div v-if="permDialogVisible" style="max-height: 500px; overflow-y: auto;">
-        <el-table :data="menuTree" border row-key="id" default-expand-all
-          :tree-props="{ children: 'children', hasChildren: 'hasChildren' }">
-          <el-table-column label="菜单名称" width="200">
-            <template #default="{ row }">
-              <el-checkbox
-                v-if="row.menuType === 1 || row.menuType === 2"
-                v-model="menuCheckedMap[row.id]"
-                @change="(val) => handleMenuCheck(row, val)"
-              >
-                {{ row.menuName }}
-              </el-checkbox>
-              <span v-else style="padding-left: 24px;">{{ row.menuName }}</span>
+      <div v-if="permDialogVisible" class="perm-tree-container">
+        <table class="perm-table">
+          <thead>
+            <tr>
+              <th width="120">菜单目录</th>
+              <th width="140">菜单</th>
+              <th>操作权限</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template v-for="dir in directories" :key="dir.id">
+              <tr v-for="(page, idx) in dir.children" :key="page.id">
+                <td v-if="idx === 0" :rowspan="dir.children.length" class="perm-dir-cell">
+                  <el-checkbox v-model="menuCheckedMap[dir.id]" @change="(val) => handleMenuCheck(dir, val)">
+                    {{ dir.menuName }}
+                  </el-checkbox>
+                </td>
+                <td>
+                  <el-checkbox v-model="menuCheckedMap[page.id]" @change="(val) => handleMenuCheck(page, val)">
+                    {{ page.menuName }}
+                  </el-checkbox>
+                </td>
+                <td>
+                  <template v-if="page.children && page.children.some(c => c.menuType === 3)">
+                    <el-checkbox
+                      v-for="btn in page.children.filter(c => c.menuType === 3)"
+                      :key="btn.id"
+                      v-model="menuCheckedMap[btn.id]"
+                      style="margin-right: 12px;"
+                    >
+                      {{ btn.menuName }}
+                    </el-checkbox>
+                  </template>
+                </td>
+              </tr>
             </template>
-          </el-table-column>
-          <el-table-column label="操作权限">
-            <template #default="{ row }">
-              <template v-if="row.children && row.children.length && row.children.some(c => c.menuType === 3)">
-                <el-checkbox
-                  v-for="btn in row.children.filter(c => c.menuType === 3)"
-                  :key="btn.id"
-                  v-model="menuCheckedMap[btn.id]"
-                  style="margin-right: 12px;"
-                >
-                  {{ btn.menuName }}
-                </el-checkbox>
-              </template>
-            </template>
-          </el-table-column>
-        </el-table>
+          </tbody>
+        </table>
       </div>
       <template #footer>
         <el-button @click="permDialogVisible = false">取消</el-button>
@@ -95,7 +103,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getRoleList, addRole, updateRole, deleteRole, getRoleMenus, updateRoleMenus } from '../../api/role'
 import { getMenuTree } from '../../api/menu'
@@ -115,6 +123,8 @@ const permDialogVisible = ref(false)
 const currentRole = ref(null)
 const menuTree = ref([])
 const menuCheckedMap = reactive({})
+
+const directories = computed(() => menuTree.value.filter(item => item.menuType === 1 && item.children && item.children.length))
 
 const loadRoles = async () => {
   const res = await getRoleList()
@@ -239,5 +249,29 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+.perm-tree-container {
+  max-height: 500px;
+  overflow-y: auto;
+}
+.perm-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.perm-table th,
+.perm-table td {
+  border: 1px solid #ebeef5;
+  padding: 10px 12px;
+  text-align: left;
+  vertical-align: middle;
+}
+.perm-table th {
+  background-color: #f5f7fa;
+  font-weight: 500;
+  color: #606266;
+}
+.perm-dir-cell {
+  text-align: center;
+  font-weight: 500;
 }
 </style>

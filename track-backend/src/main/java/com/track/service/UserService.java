@@ -47,6 +47,12 @@ public class UserService {
     }
 
     public Result<User> addUser(User user) {
+        if (user.getUsername() == null || user.getUsername().trim().isEmpty()) {
+            return Result.error("用户名不能为空");
+        }
+        if (user.getPassword() == null || user.getPassword().trim().isEmpty()) {
+            return Result.error("密码不能为空");
+        }
         if (userRepository.findByUsername(user.getUsername()) != null) {
             return Result.error("用户名已存在");
         }
@@ -57,11 +63,6 @@ public class UserService {
         }
         userRepository.save(user);
 
-        if (user.getAvatar() != null && user.getAvatar().equals("roleId")) {
-            // avatar field is temporarily used to pass roleId from frontend
-        }
-
-        user.setPassword(null);
         return Result.success(user);
     }
 

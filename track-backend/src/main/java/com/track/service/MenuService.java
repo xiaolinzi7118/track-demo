@@ -34,14 +34,19 @@ public class MenuService {
         return buildTree(allMenus);
     }
 
+    public List<Menu> getFullMenuTree() {
+        List<Menu> allMenus = menuRepository.findByStatusOrderBySortOrder(1);
+        return buildFullTree(allMenus);
+    }
+
     public List<Menu> getMenusByUserId(Long userId) {
         List<UserRole> userRoles = userRoleRepository.findByUserId(userId);
 
         // 检查是否是admin角色
         for (UserRole ur : userRoles) {
             Role role = roleRepository.findById(ur.getRoleId()).orElse(null);
-            if (role != null && "admin".equals(role.getRoleCode())) {
-                return getMenuTree(); // admin返回全部菜单（仅目录和页面）
+            if (role != null && "admin".equalsIgnoreCase(role.getRoleCode())) {
+                return getMenuTree();
             }
         }
 
@@ -75,6 +80,13 @@ public class MenuService {
             }
         }
 
+        // 仪表盘默认对所有角色可见
+        for (Menu m : allMenus) {
+            if ("dashboard".equals(m.getMenuCode()) && m.getMenuType() == 2) {
+                viewablePageIds.add(m.getId());
+            }
+        }
+
         // 构建用户可见的菜单树：只包含可见的页面和其所属目录
         List<Menu> visibleMenus = new ArrayList<>();
         Set<Long> visibleDirIds = new HashSet<>();
@@ -103,8 +115,7 @@ public class MenuService {
 
         for (UserRole ur : userRoles) {
             Role role = roleRepository.findById(ur.getRoleId()).orElse(null);
-            if (role != null && "admin".equals(role.getRoleCode())) {
-                // admin拥有所有权限
+            if (role != null && "admin".equalsIgnoreCase(role.getRoleCode())) {
                 List<Menu> allMenus = menuRepository.findByStatusOrderBySortOrder(1);
                 return allMenus.stream()
                         .filter(m -> m.getPerms() != null)
@@ -134,6 +145,25 @@ public class MenuService {
 
         for (Menu m : menus) {
             if (m.getMenuType() == 3) continue; // 按钮不参与菜单树
+            if (m.getParentId() == null || m.getParentId() == 0) {
+                roots.add(m);
+            } else {
+                childrenMap.computeIfAbsent(m.getParentId(), k -> new ArrayList<>()).add(m);
+            }
+        }
+
+        for (Menu root : roots) {
+            root.setChildren(getChildren(root.getId(), childrenMap));
+        }
+
+        return roots;
+    }
+
+    private List<Menu> buildFullTree(List<Menu> menus) {
+        Map<Long, List<Menu>> childrenMap = new LinkedHashMap<>();
+        List<Menu> roots = new ArrayList<>();
+
+        for (Menu m : menus) {
             if (m.getParentId() == null || m.getParentId() == 0) {
                 roots.add(m);
             } else {

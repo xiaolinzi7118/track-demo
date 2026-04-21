@@ -83,9 +83,8 @@ const handleMenuSelect = (index) => {
   router.push(index)
 }
 
-onMounted(async () => {
-  await userStore.handleGetUserInfo()
-  await userStore.fetchMenus()
+onMounted(() => {
+  // userInfo 和 menus 已在 router guard 中加载
 })
 </script>
 

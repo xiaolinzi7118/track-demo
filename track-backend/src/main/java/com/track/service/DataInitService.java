@@ -32,14 +32,36 @@ public class DataInitService implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        initRoles();
-        initMenus();
-        initAdminUser();
+        if (!isDataFormatCorrect()) {
+            cleanRbacData();
+            initRoles();
+            initMenus();
+        }
+        ensureAdminAssignments();
+    }
+
+    /**
+     * 检查数据格式是否与当前代码匹配。
+     * 旧版本数据没有 menuType=3 的按钮权限项，也没有 perms 字段值。
+     */
+    private boolean isDataFormatCorrect() {
+        if (roleRepository.count() == 0) return false;
+        if (menuRepository.count() == 0) return false;
+        Menu trackDir = menuRepository.findByMenuCode("track");
+        return trackDir != null && trackDir.getMenuType() == 1;
+    }
+
+    /**
+     * 清理 RBAC 表数据（不影响业务表）
+     */
+    private void cleanRbacData() {
+        roleMenuRepository.deleteAllInBatch();
+        userRoleRepository.deleteAllInBatch();
+        menuRepository.deleteAllInBatch();
+        roleRepository.deleteAllInBatch();
     }
 
     private void initRoles() {
-        if (roleRepository.count() > 0) return;
-
         Role admin = new Role();
         admin.setRoleCode("admin");
         admin.setRoleName("管理员");
@@ -63,95 +85,82 @@ public class DataInitService implements CommandLineRunner {
     }
 
     private void initMenus() {
-        if (menuRepository.count() > 0) return;
-
         List<Menu> menus = new ArrayList<>();
 
-        // 仪表盘
-        Menu dashboard = createMenu(0L, "仪表盘", "dashboard", "/dashboard", "House", 1, 2, null);
-        menus.add(dashboard);
-        menus.add(createMenu(null, "查看", "dashboard:view", null, null, 1, 3, "dashboard:view"));
+        // 仪表盘（默认页面，所有角色可见，无需权限编辑）
+        menus.add(createMenu(0L, "仪表盘", "dashboard", "/dashboard", "House", 1, 2, null));
+
+        // 埋点管理（目录）
+        menus.add(createMenu(0L, "埋点管理", "track", "/track", "DataAnalysis", 2, 1, null));
 
         // 埋点配置
-        Menu trackConfig = createMenu(0L, "埋点配置", "track-config", "/track-config", "Setting", 2, 2, null);
-        menus.add(trackConfig);
+        menus.add(createMenu(null, "埋点配置", "track-config", "/track-config", "Setting", 1, 2, null));
         menus.add(createMenu(null, "查看", "track-config:view", null, null, 1, 3, "track-config:view"));
         menus.add(createMenu(null, "新增", "track-config:add", null, null, 2, 3, "track-config:add"));
         menus.add(createMenu(null, "编辑", "track-config:edit", null, null, 3, 3, "track-config:edit"));
         menus.add(createMenu(null, "删除", "track-config:delete", null, null, 4, 3, "track-config:delete"));
 
         // 接口来源管理
-        Menu apiInterface = createMenu(0L, "接口来源管理", "api-interface", "/api-interface", "Link", 3, 2, null);
-        menus.add(apiInterface);
+        menus.add(createMenu(null, "接口来源管理", "api-interface", "/api-interface", "Link", 2, 2, null));
         menus.add(createMenu(null, "查看", "api-interface:view", null, null, 1, 3, "api-interface:view"));
         menus.add(createMenu(null, "新增", "api-interface:add", null, null, 2, 3, "api-interface:add"));
         menus.add(createMenu(null, "编辑", "api-interface:edit", null, null, 3, 3, "api-interface:edit"));
         menus.add(createMenu(null, "删除", "api-interface:delete", null, null, 4, 3, "api-interface:delete"));
 
         // 数据回检
-        Menu trackData = createMenu(0L, "数据回检", "track-data", "/track-data", "DataLine", 4, 2, null);
-        menus.add(trackData);
+        menus.add(createMenu(null, "数据回检", "track-data", "/track-data", "DataLine", 3, 2, null));
         menus.add(createMenu(null, "查看", "track-data:view", null, null, 1, 3, "track-data:view"));
         menus.add(createMenu(null, "清空", "track-data:clear", null, null, 2, 3, "track-data:clear"));
 
         // 系统管理
-        Menu system = createMenu(0L, "系统管理", "system", "/system", "Tools", 5, 1, null);
-        menus.add(system);
+        menus.add(createMenu(0L, "系统管理", "system", "/system", "Tools", 3, 1, null));
 
         // 用户管理
-        Menu systemUser = createMenu(null, "用户管理", "system-user", "/system/user", "User", 1, 2, null);
-        menus.add(systemUser);
+        menus.add(createMenu(null, "用户管理", "system-user", "/system/user", "User", 1, 2, null));
         menus.add(createMenu(null, "查看", "system-user:view", null, null, 1, 3, "system-user:view"));
         menus.add(createMenu(null, "新增", "system-user:add", null, null, 2, 3, "system-user:add"));
         menus.add(createMenu(null, "编辑", "system-user:edit", null, null, 3, 3, "system-user:edit"));
         menus.add(createMenu(null, "删除", "system-user:delete", null, null, 4, 3, "system-user:delete"));
 
         // 角色管理
-        Menu systemRole = createMenu(null, "角色管理", "system-role", "/system/role", "Lock", 2, 2, null);
-        menus.add(systemRole);
+        menus.add(createMenu(null, "角色管理", "system-role", "/system/role", "Lock", 2, 2, null));
         menus.add(createMenu(null, "查看", "system-role:view", null, null, 1, 3, "system-role:view"));
         menus.add(createMenu(null, "新增", "system-role:add", null, null, 2, 3, "system-role:add"));
         menus.add(createMenu(null, "编辑", "system-role:edit", null, null, 3, 3, "system-role:edit"));
         menus.add(createMenu(null, "删除", "system-role:delete", null, null, 4, 3, "system-role:delete"));
 
         // 重置数据
-        Menu resetData = createMenu(null, "重置数据", "system-reset-data", "/system/reset-data", "Delete", 3, 2, null);
-        menus.add(resetData);
+        menus.add(createMenu(null, "重置数据", "system-reset-data", "/system/reset-data", "Delete", 3, 2, null));
         menus.add(createMenu(null, "查看", "system-reset-data:view", null, null, 1, 3, "system-reset-data:view"));
         menus.add(createMenu(null, "操作", "system-reset-data:operate", null, null, 2, 3, "system-reset-data:operate"));
 
-        // 保存所有菜单，先保存父级再保存子级
-        // 第一轮：保存目录和顶级页面（parentId=0）
-        List<Menu> savedTopLevel = new ArrayList<>();
+        // 保存：先保存顶级页面/目录（parentId=0），再保存子页面，最后保存按钮
+        Map<String, Long> codeToId = new HashMap<>();
+        Map<String, Long> pageToId = new HashMap<>();
+
+        // 第一轮：保存 parentId=0 的顶级项
         for (Menu m : menus) {
             if (m.getParentId() != null && m.getParentId() == 0L) {
-                savedTopLevel.add(menuRepository.save(m));
+                menuRepository.save(m);
+                codeToId.put(m.getMenuCode(), m.getId());
             }
         }
 
-        // 建立menuCode到id的映射
-        Map<String, Long> codeToId = new HashMap<>();
-        for (Menu m : savedTopLevel) {
-            codeToId.put(m.getMenuCode(), m.getId());
-        }
-
-        // 第二轮：保存子页面和按钮，设置正确的parentId
-        Map<String, Long> pageToId = new HashMap<>();
+        // 第二轮：保存子页面（menuType=2 且 parentId=null）
         for (Menu m : menus) {
-            if (m.getParentId() == null) {
-                // 判断属于哪个父级页面
+            if (m.getParentId() == null && m.getMenuType() == 2) {
                 Long parentId = resolveParentId(m.getMenuCode(), codeToId);
                 if (parentId != null) {
                     m.setParentId(parentId);
-                    Menu saved = menuRepository.save(m);
-                    pageToId.put(m.getMenuCode(), saved.getId());
+                    menuRepository.save(m);
+                    pageToId.put(m.getMenuCode(), m.getId());
                 }
             }
         }
 
-        // 第三轮：保存按钮级别，按钮属于页面
+        // 第三轮：保存按钮（menuType=3 且 parentId=null）
         for (Menu m : menus) {
-            if (m.getParentId() == null) {
+            if (m.getParentId() == null && m.getMenuType() == 3) {
                 Long parentId = resolveButtonParentId(m.getMenuCode(), pageToId, codeToId);
                 if (parentId != null) {
                     m.setParentId(parentId);
@@ -160,28 +169,25 @@ public class DataInitService implements CommandLineRunner {
             }
         }
 
-        // 给admin角色分配所有菜单
+        // 给各角色分配菜单权限
         assignAllMenusToAdmin();
         assignBusinessMenus();
         assignDeveloperMenus();
     }
 
     private Long resolveParentId(String menuCode, Map<String, Long> codeToId) {
+        if (menuCode.startsWith("track-config")) return codeToId.get("track");
+        if (menuCode.startsWith("api-interface")) return codeToId.get("track");
+        if (menuCode.startsWith("track-data")) return codeToId.get("track");
         if (menuCode.startsWith("system-user")) return codeToId.get("system");
         if (menuCode.startsWith("system-role")) return codeToId.get("system");
         if (menuCode.startsWith("system-reset-data")) return codeToId.get("system");
-        if (menuCode.startsWith("dashboard")) return codeToId.get("dashboard");
-        if (menuCode.startsWith("track-config")) return codeToId.get("track-config");
-        if (menuCode.startsWith("api-interface")) return codeToId.get("api-interface");
-        if (menuCode.startsWith("track-data")) return codeToId.get("track-data");
         return null;
     }
 
     private Long resolveButtonParentId(String menuCode, Map<String, Long> pageToId, Map<String, Long> codeToId) {
-        // 按钮的menuCode格式: "xxx:yyy"，对应的页面menuCode为 "xxx"
         String pageCode = menuCode.contains(":") ? menuCode.substring(0, menuCode.indexOf(':')) : null;
         if (pageCode != null) {
-            // 先查pageToId（已保存的子页面），再查codeToId（顶级页面）
             Long id = pageToId.get(pageCode);
             if (id != null) return id;
             return codeToId.get(pageCode);
@@ -204,8 +210,56 @@ public class DataInitService implements CommandLineRunner {
         return m;
     }
 
+    /**
+     * 确保 admin 用户拥有 admin 角色和所有菜单权限。
+     * 无论数据库中角色编码的大小写如何，都能正确匹配。
+     */
+    private void ensureAdminAssignments() {
+        User admin = userRepository.findByUsername("admin");
+        if (admin == null) return;
+
+        // 大小写不敏感地查找 admin 角色
+        Role adminRole = findAdminRole();
+        if (adminRole == null) return;
+
+        // 确保用户-角色关联
+        List<UserRole> existingUR = userRoleRepository.findByUserId(admin.getId());
+        boolean hasRole = false;
+        for (UserRole ur : existingUR) {
+            Role r = roleRepository.findById(ur.getRoleId()).orElse(null);
+            if (r != null && "admin".equalsIgnoreCase(r.getRoleCode())) {
+                hasRole = true;
+                break;
+            }
+        }
+        if (!hasRole) {
+            UserRole ur = new UserRole();
+            ur.setUserId(admin.getId());
+            ur.setRoleId(adminRole.getId());
+            userRoleRepository.save(ur);
+        }
+
+        // 确保 admin 角色拥有所有菜单权限
+        List<RoleMenu> existingRM = roleMenuRepository.findByRoleId(adminRole.getId());
+        if (existingRM.isEmpty()) {
+            List<Menu> allMenus = menuRepository.findAll();
+            for (Menu menu : allMenus) {
+                RoleMenu rm = new RoleMenu();
+                rm.setRoleId(adminRole.getId());
+                rm.setMenuId(menu.getId());
+                roleMenuRepository.save(rm);
+            }
+        }
+    }
+
+    private Role findAdminRole() {
+        Role role = roleRepository.findByRoleCode("admin");
+        if (role != null) return role;
+        return roleRepository.findByRoleCode("ADMIN");
+    }
+
     private void assignAllMenusToAdmin() {
-        Role adminRole = roleRepository.findByRoleCode("admin");
+        Role adminRole = findAdminRole();
         if (adminRole == null) return;
 
         List<RoleMenu> existing = roleMenuRepository.findByRoleId(adminRole.getId());
@@ -222,14 +276,14 @@ public class DataInitService implements CommandLineRunner {
 
     private void assignBusinessMenus() {
         Role businessRole = roleRepository.findByRoleCode("business");
+        if (businessRole == null) businessRole = roleRepository.findByRoleCode("BUSINESS");
         if (businessRole == null) return;
 
         List<RoleMenu> existing = roleMenuRepository.findByRoleId(businessRole.getId());
         if (!existing.isEmpty()) return;
 
-        // 业务人员：仪表盘(全部), 埋点配置(全部), 接口来源管理(全部), 数据回检(查看), 重置数据(查看)
         String[] perms = {
-            "dashboard", "dashboard:view",
+            "track",
             "track-config", "track-config:view", "track-config:add", "track-config:edit", "track-config:delete",
             "api-interface", "api-interface:view", "api-interface:add", "api-interface:edit", "api-interface:delete",
             "track-data", "track-data:view",
@@ -240,14 +294,14 @@ public class DataInitService implements CommandLineRunner {
 
     private void assignDeveloperMenus() {
         Role developerRole = roleRepository.findByRoleCode("developer");
+        if (developerRole == null) developerRole = roleRepository.findByRoleCode("DEVELOPER");
         if (developerRole == null) return;
 
         List<RoleMenu> existing = roleMenuRepository.findByRoleId(developerRole.getId());
         if (!existing.isEmpty()) return;
 
-        // 开发人员：仪表盘(全部), 埋点配置(查看), 数据回检(全部), 接口来源管理(查看)
         String[] perms = {
-            "dashboard", "dashboard:view",
+            "track",
             "track-config", "track-config:view",
             "api-interface", "api-interface:view",
             "track-data", "track-data:view", "track-data:clear"
@@ -265,21 +319,5 @@ public class DataInitService implements CommandLineRunner {
                 roleMenuRepository.save(rm);
             }
         }
-    }
-
-    private void initAdminUser() {
-        User admin = userRepository.findByUsername("admin");
-        if (admin == null) return;
-
-        List<UserRole> existing = userRoleRepository.findByUserId(admin.getId());
-        if (!existing.isEmpty()) return;
-
-        Role adminRole = roleRepository.findByRoleCode("admin");
-        if (adminRole == null) return;
-
-        UserRole ur = new UserRole();
-        ur.setUserId(admin.getId());
-        ur.setRoleId(adminRole.getId());
-        userRoleRepository.save(ur);
     }
 }

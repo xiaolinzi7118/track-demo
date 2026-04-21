@@ -64,7 +64,7 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const userStore = useUserStore()
   const token = localStorage.getItem('token')
 
@@ -76,6 +76,17 @@ router.beforeEach((to, from, next) => {
     }
   } else {
     if (token) {
+      // 页面刷新时 store 重置，需要重新加载用户信息和菜单
+      if (!userStore.userInfo.username) {
+        try {
+          await userStore.handleGetUserInfo()
+          await userStore.fetchMenus()
+        } catch (e) {
+          userStore.handleLogout()
+          next('/login')
+          return
+        }
+      }
       next()
     } else {
       next('/login')

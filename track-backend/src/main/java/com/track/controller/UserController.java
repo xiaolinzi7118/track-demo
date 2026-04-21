@@ -2,11 +2,14 @@ package com.track.controller;
 
 import com.track.common.Result;
 import com.track.common.PermissionChecker;
+import com.track.entity.Role;
 import com.track.entity.User;
 import com.track.entity.UserRole;
+import com.track.repository.RoleRepository;
 import com.track.repository.UserRoleRepository;
 import com.track.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -24,6 +27,9 @@ public class UserController {
 
     @Autowired
     private UserRoleRepository userRoleRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
 
     @GetMapping("/list")
     public Result<List<Map<String, Object>>> list(@RequestParam(required = false) String keyword) {
@@ -86,6 +92,7 @@ public class UserController {
     }
 
     @PostMapping("/add")
+    @Transactional
     public Result<User> add(@RequestBody Map<String, Object> request) {
         permissionChecker.checkPermission("system-user:add");
 
@@ -98,6 +105,9 @@ public class UserController {
         Result<User> result = userService.addUser(user);
         if (result.getCode() == 200 && request.get("roleId") != null) {
             Long roleId = Long.valueOf(request.get("roleId").toString());
+            if (!roleRepository.existsById(roleId)) {
+                return Result.error("角色不存在");
+            }
             UserRole ur = new UserRole();
             ur.setUserId(result.getData().getId());
             ur.setRoleId(roleId);
@@ -107,6 +117,7 @@ public class UserController {
     }
 
     @PostMapping("/update")
+    @Transactional
     public Result<User> update(@RequestBody Map<String, Object> request) {
         permissionChecker.checkPermission("system-user:edit");
 
@@ -118,9 +129,11 @@ public class UserController {
 
         Result<User> result = userService.updateUser(user);
 
-        // 更新角色关联
         if (request.get("roleId") != null) {
             Long roleId = Long.valueOf(request.get("roleId").toString());
+            if (!roleRepository.existsById(roleId)) {
+                return Result.error("角色不存在");
+            }
             userRoleRepository.deleteByUserId(id);
             UserRole ur = new UserRole();
             ur.setUserId(id);

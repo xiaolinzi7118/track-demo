@@ -18,7 +18,7 @@ public class MenuController {
 
     @GetMapping("/tree")
     public Result<List<Menu>> getMenuTree() {
-        return Result.success(menuService.getMenuTree());
+        return Result.success(menuService.getFullMenuTree());
     }
 
     @GetMapping("/user-menus")
