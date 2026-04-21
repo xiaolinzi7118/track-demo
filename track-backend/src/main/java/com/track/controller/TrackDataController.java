@@ -1,7 +1,7 @@
 package com.track.controller;
 
-import com.track.common.Result;
 import com.track.common.PermissionChecker;
+import com.track.common.Result;
 import com.track.entity.TrackData;
 import com.track.service.TrackDataService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -58,11 +58,5 @@ public class TrackDataController {
     public Result<List<Map<String, Object>>> getTrendData() {
         permissionChecker.checkPermission("track-data:view");
         return trackDataService.getTrendData();
-    }
-
-    @PostMapping("/clear")
-    public Result<Void> clear() {
-        permissionChecker.checkPermission("track-data:clear");
-        return trackDataService.clearAll();
     }
 }

@@ -1,7 +1,7 @@
 package com.track.controller;
 
-import com.track.common.Result;
 import com.track.common.PermissionChecker;
+import com.track.common.Result;
 import com.track.entity.TrackConfig;
 import com.track.service.TrackConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,10 +63,5 @@ public class TrackConfigController {
     @GetMapping("/statistics")
     public Result<Map<String, Object>> statistics() {
         return trackConfigService.statistics();
-    }
-
-    @PostMapping("/clear")
-    public Result<Void> clear() {
-        return trackConfigService.clearAll();
     }
 }

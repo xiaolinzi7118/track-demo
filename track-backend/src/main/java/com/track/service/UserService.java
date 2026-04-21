@@ -2,13 +2,11 @@ package com.track.service;
 
 import com.track.common.Result;
 import com.track.entity.User;
-import com.track.entity.UserRole;
 import com.track.repository.UserRepository;
 import com.track.repository.UserRoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -20,19 +18,6 @@ public class UserService {
 
     @Autowired
     private UserRoleRepository userRoleRepository;
-
-    @PostConstruct
-    public void init() {
-        if (userRepository.findByUsername("admin") == null) {
-            User admin = new User();
-            admin.setUsername("admin");
-            admin.setPassword("123456");
-            admin.setNickname("管理员");
-            admin.setStatus(1);
-            admin.setCreateTime(LocalDateTime.now());
-            userRepository.save(admin);
-        }
-    }
 
     public User findByUsername(String username) {
         return userRepository.findByUsername(username);

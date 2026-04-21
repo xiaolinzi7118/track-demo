@@ -1,4 +1,4 @@
-import request from '../utils/request'
+﻿import request from '../utils/request'
 
 export function getTrackConfigList(params) {
   return request({
@@ -73,20 +73,6 @@ export function getTrackDataTrend() {
   return request({
     url: '/track-data/trend',
     method: 'get'
-  })
-}
-
-export function clearTrackConfig() {
-  return request({
-    url: '/track-config/clear',
-    method: 'post'
-  })
-}
-
-export function clearTrackData() {
-  return request({
-    url: '/track-data/clear',
-    method: 'post'
   })
 }
 

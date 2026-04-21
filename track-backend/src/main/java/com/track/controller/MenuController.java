@@ -1,5 +1,6 @@
 package com.track.controller;
 
+import com.track.common.PermissionChecker;
 import com.track.common.Result;
 import com.track.entity.Menu;
 import com.track.service.MenuService;
@@ -16,8 +17,12 @@ public class MenuController {
     @Autowired
     private MenuService menuService;
 
+    @Autowired
+    private PermissionChecker permissionChecker;
+
     @GetMapping("/tree")
     public Result<List<Menu>> getMenuTree() {
+        permissionChecker.checkPermission("system-role:view");
         return Result.success(menuService.getFullMenuTree());
     }
 

@@ -1,4 +1,4 @@
-import { createRouter, createWebHashHistory } from 'vue-router'
+﻿import { createRouter, createWebHashHistory } from 'vue-router'
 import { useUserStore } from '../store/user'
 
 const routes = [
@@ -48,12 +48,6 @@ const routes = [
         name: 'SystemRole',
         component: () => import('../views/system/role.vue'),
         meta: { title: '角色管理' }
-      },
-      {
-        path: 'system/reset-data',
-        name: 'SystemResetData',
-        component: () => import('../views/system/reset-data.vue'),
-        meta: { title: '重置数据' }
       }
     ]
   }

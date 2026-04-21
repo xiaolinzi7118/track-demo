@@ -97,8 +97,4 @@ public class TrackConfigService {
         return Result.success(result);
     }
 
-    public Result<Void> clearAll() {
-        trackConfigRepository.deleteAll();
-        return Result.success();
-    }
 }
