@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <el-container class="layout-container">
     <el-aside width="200px" class="aside">
       <div class="logo">
@@ -11,7 +11,10 @@
         @select="handleMenuSelect"
       >
         <template v-for="menu in userStore.menus" :key="menu.id">
-          <el-sub-menu v-if="menu.menuType === 1 && menu.children && menu.children.length" :index="menu.path || menu.menuCode">
+          <el-sub-menu
+            v-if="menu.menuType === 1 && menu.children && menu.children.length"
+            :index="menu.path || menu.menuCode"
+          >
             <template #title>
               <el-icon><component :is="menu.icon" /></el-icon>
               <span>{{ menu.menuName }}</span>
@@ -32,6 +35,7 @@
         </template>
       </el-menu>
     </el-aside>
+
     <el-container>
       <el-header class="header">
         <div class="header-left">
@@ -52,8 +56,24 @@
           </el-dropdown>
         </div>
       </el-header>
+
+      <div class="tag-nav">
+        <el-tag
+          v-for="tab in tabStore.visitedTabs"
+          :key="tab.path"
+          class="nav-tag"
+          :class="{ active: tab.path === tabStore.activeTab }"
+          :effect="tab.path === tabStore.activeTab ? 'dark' : 'plain'"
+          :closable="tab.closable"
+          @click="handleTagClick(tab.path)"
+          @close="handleTagClose(tab.path)"
+        >
+          {{ tab.title }}
+        </el-tag>
+      </div>
+
       <el-main class="main">
-        <router-view />
+        <router-view :key="route.fullPath" />
       </el-main>
     </el-container>
   </el-container>
@@ -63,18 +83,19 @@
 import { computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../store/user'
+import { useTabStore } from '../store/tab'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const tabStore = useTabStore()
 
-const activeMenu = computed(() => {
-  return route.path
-})
+const activeMenu = computed(() => route.meta?.activeMenu || route.path)
 
 const handleCommand = (command) => {
   if (command === 'logout') {
     userStore.handleLogout()
+    tabStore.resetTabs()
     router.push('/login')
   }
 }
@@ -83,8 +104,27 @@ const handleMenuSelect = (index) => {
   router.push(index)
 }
 
+const handleTagClick = (path) => {
+  if (path !== route.fullPath) {
+    router.push(path)
+  }
+}
+
+const handleTagClose = (path) => {
+  const nextPath = tabStore.removeTab(path)
+  if (path === route.fullPath && nextPath) {
+    router.push(nextPath)
+  }
+}
+
 onMounted(() => {
-  // userInfo 和 menus 已在 router guard 中加载
+  tabStore.initTabs()
+  tabStore.addTab({
+    path: route.fullPath,
+    title: route.meta?.title || '页面',
+    closable: !route.meta?.affix && route.path !== '/dashboard'
+  })
+  tabStore.setActiveTab(route.fullPath)
 })
 </script>
 
@@ -140,6 +180,26 @@ onMounted(() => {
   gap: 8px;
   cursor: pointer;
   color: #606266;
+}
+
+.tag-nav {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 8px;
+  padding: 10px 16px;
+  background: #fff;
+  border-top: 1px solid #f0f2f5;
+  border-bottom: 1px solid #ebeef5;
+  overflow-x: auto;
+}
+
+.nav-tag {
+  cursor: pointer;
+  user-select: none;
+}
+
+.nav-tag.active {
+  border-color: var(--el-color-primary);
 }
 
 .main {

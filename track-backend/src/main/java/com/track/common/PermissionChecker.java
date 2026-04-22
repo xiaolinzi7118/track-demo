@@ -13,6 +13,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 import javax.servlet.http.HttpServletRequest;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 @Component
 public class PermissionChecker {
@@ -30,7 +31,11 @@ public class PermissionChecker {
     private static final long CACHE_TTL_MS = 5 * 60 * 1000;
 
     public Long getCurrentUserId() {
-        HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
+        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if (attributes == null) {
+            return null;
+        }
+        HttpServletRequest request = attributes.getRequest();
         return (Long) request.getAttribute("currentUserId");
     }
 
@@ -39,8 +44,6 @@ public class PermissionChecker {
         if (userId == null) return false;
 
         Set<String> permissions = getPermissionsWithCache(userId);
-
-        // 检查是否admin角色
         if (isAdmin(userId)) return true;
 
         return permissions.contains(permission);
@@ -48,7 +51,39 @@ public class PermissionChecker {
 
     public void checkPermission(String permission) {
         if (!hasPermission(permission)) {
-            throw new RuntimeException("没有权限执行此操作: " + permission);
+            throw new RuntimeException("No permission: " + permission);
+        }
+    }
+
+    public boolean hasAnyRole(String... roleCodes) {
+        Long userId = getCurrentUserId();
+        if (userId == null || roleCodes == null || roleCodes.length == 0) {
+            return false;
+        }
+
+        Set<String> targetRoles = Arrays.stream(roleCodes)
+                .filter(Objects::nonNull)
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(String::toLowerCase)
+                .collect(Collectors.toSet());
+        if (targetRoles.isEmpty()) {
+            return false;
+        }
+
+        List<UserRole> userRoles = userRoleRepository.findByUserId(userId);
+        for (UserRole userRole : userRoles) {
+            Role role = roleRepository.findById(userRole.getRoleId()).orElse(null);
+            if (role != null && role.getRoleCode() != null && targetRoles.contains(role.getRoleCode().toLowerCase())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public void checkAnyRole(String... roleCodes) {
+        if (!hasAnyRole(roleCodes)) {
+            throw new RuntimeException("No permission for current role");
         }
     }
 

@@ -10,15 +10,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(RuntimeException.class)
     @ResponseBody
     public Result<Void> handleRuntimeException(RuntimeException e) {
-        if (e.getMessage() != null && e.getMessage().contains("没有权限")) {
-            return Result.error(403, e.getMessage());
+        String message = e.getMessage();
+        if (message != null && message.toLowerCase().contains("no permission")) {
+            return Result.error(403, message);
         }
-        return Result.error(e.getMessage());
+        return Result.error(message == null ? "Runtime error" : message);
     }
 
     @ExceptionHandler(Exception.class)
     @ResponseBody
     public Result<Void> handleException(Exception e) {
-        return Result.error("服务器内部错误: " + e.getMessage());
+        return Result.error("Internal server error: " + e.getMessage());
     }
 }

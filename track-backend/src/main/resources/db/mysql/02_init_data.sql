@@ -61,7 +61,8 @@ VALUES
     (22, 21, '查看', 'system-role:view', NULL, NULL, 1, 3, 'system-role:view', 1, NOW(3), NOW(3)),
     (23, 21, '新增', 'system-role:add', NULL, NULL, 2, 3, 'system-role:add', 1, NOW(3), NOW(3)),
     (24, 21, '编辑', 'system-role:edit', NULL, NULL, 3, 3, 'system-role:edit', 1, NOW(3), NOW(3)),
-    (25, 21, '删除', 'system-role:delete', NULL, NULL, 4, 3, 'system-role:delete', 1, NOW(3), NOW(3))
+    (25, 21, '删除', 'system-role:delete', NULL, NULL, 4, 3, 'system-role:delete', 1, NOW(3), NOW(3)),
+    (26, 15, '参数维护', 'system-dict-param', '/system/dict-param', 'Operation', 3, 2, NULL, 1, NOW(3), NOW(3))
 ON DUPLICATE KEY UPDATE
     parent_id = VALUES(parent_id),
     menu_name = VALUES(menu_name),

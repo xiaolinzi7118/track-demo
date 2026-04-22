@@ -1,5 +1,6 @@
 ﻿import { createRouter, createWebHashHistory } from 'vue-router'
 import { useUserStore } from '../store/user'
+import { useTabStore } from '../store/tab'
 
 const routes = [
   {
@@ -17,7 +18,7 @@ const routes = [
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('../views/dashboard/index.vue'),
-        meta: { title: '仪表盘' }
+        meta: { title: '仪表盘', affix: true }
       },
       {
         path: 'track-config',
@@ -48,6 +49,18 @@ const routes = [
         name: 'SystemRole',
         component: () => import('../views/system/role.vue'),
         meta: { title: '角色管理' }
+      },
+      {
+        path: 'system/dict-param',
+        name: 'SystemDictParam',
+        component: () => import('../views/system/dict-param/index.vue'),
+        meta: { title: '参数维护' }
+      },
+      {
+        path: 'system/dict-param/:action',
+        name: 'SystemDictParamDetail',
+        component: () => import('../views/system/dict-param/detail.vue'),
+        meta: { title: '参数维护详情', activeMenu: '/system/dict-param' }
       }
     ]
   }
@@ -86,6 +99,20 @@ router.beforeEach(async (to, from, next) => {
       next('/login')
     }
   }
+})
+
+router.afterEach((to) => {
+  if (to.path === '/login') return
+
+  const tabStore = useTabStore()
+  const closable = !to.meta?.affix && to.path !== '/dashboard'
+
+  tabStore.addTab({
+    path: to.fullPath,
+    title: to.meta?.title || '页面',
+    closable
+  })
+  tabStore.setActiveTab(to.fullPath)
 })
 
 export default router

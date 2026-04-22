@@ -17,6 +17,11 @@ import java.util.stream.Collectors;
 @Service
 public class MenuService {
 
+    private static final String ADMIN_ROLE_CODE = "admin";
+    private static final String DEVELOPER_ROLE_CODE = "developer";
+    private static final String DASHBOARD_MENU_CODE = "dashboard";
+    private static final String DICT_PARAM_MENU_CODE = "system-dict-param";
+
     @Autowired
     private MenuRepository menuRepository;
 
@@ -35,75 +40,64 @@ public class MenuService {
     }
 
     public List<Menu> getFullMenuTree() {
-        List<Menu> allMenus = menuRepository.findByStatusOrderBySortOrder(1);
+        List<Menu> allMenus = menuRepository.findByStatusOrderBySortOrder(1).stream()
+                .filter(menu -> !DICT_PARAM_MENU_CODE.equals(menu.getMenuCode()))
+                .collect(Collectors.toList());
         return buildFullTree(allMenus);
     }
 
     public List<Menu> getMenusByUserId(Long userId) {
         List<UserRole> userRoles = userRoleRepository.findByUserId(userId);
+        Set<String> roleCodes = getRoleCodes(userRoles);
 
-        // 检查是否是admin角色
-        for (UserRole ur : userRoles) {
-            Role role = roleRepository.findById(ur.getRoleId()).orElse(null);
-            if (role != null && "admin".equalsIgnoreCase(role.getRoleCode())) {
-                return getMenuTree();
-            }
+        if (roleCodes.contains(ADMIN_ROLE_CODE)) {
+            return getMenuTree();
         }
 
-        // 获取用户角色关联的所有菜单ID
         Set<Long> menuIds = new HashSet<>();
-        for (UserRole ur : userRoles) {
-            List<RoleMenu> roleMenus = roleMenuRepository.findByRoleId(ur.getRoleId());
-            for (RoleMenu rm : roleMenus) {
-                menuIds.add(rm.getMenuId());
+        for (UserRole userRole : userRoles) {
+            List<RoleMenu> roleMenus = roleMenuRepository.findByRoleId(userRole.getRoleId());
+            for (RoleMenu roleMenu : roleMenus) {
+                menuIds.add(roleMenu.getMenuId());
             }
         }
 
-        if (menuIds.isEmpty()) return new ArrayList<>();
-
-        // 查找用户有 "xxx:view" 权限的页面
         List<Menu> allMenus = menuRepository.findByStatusOrderBySortOrder(1);
-        Set<String> userPerms = new HashSet<>();
-        for (Menu m : allMenus) {
-            if (menuIds.contains(m.getId()) && m.getPerms() != null) {
-                userPerms.add(m.getPerms());
+        Set<Long> viewablePageIds = collectViewablePageIds(menuIds, allMenus);
+
+        // Dashboard is always visible.
+        for (Menu menu : allMenus) {
+            if (DASHBOARD_MENU_CODE.equals(menu.getMenuCode()) && menu.getMenuType() == 2) {
+                viewablePageIds.add(menu.getId());
+                break;
             }
         }
 
-        // 找出有查看权限的页面（perms以:view结尾或页面本身被授权且其子按钮有:view）
-        Set<Long> viewablePageIds = new HashSet<>();
-        for (Menu m : allMenus) {
-            if (m.getMenuType() == 3 && m.getPerms() != null && m.getPerms().endsWith(":view")) {
-                if (menuIds.contains(m.getId())) {
-                    viewablePageIds.add(m.getParentId());
+        // Dict parameter page is role-hardcoded for developer, outside role-permission config.
+        if (roleCodes.contains(DEVELOPER_ROLE_CODE)) {
+            for (Menu menu : allMenus) {
+                if (DICT_PARAM_MENU_CODE.equals(menu.getMenuCode()) && menu.getMenuType() == 2) {
+                    viewablePageIds.add(menu.getId());
+                    break;
                 }
             }
         }
 
-        // 仪表盘默认对所有角色可见
-        for (Menu m : allMenus) {
-            if ("dashboard".equals(m.getMenuCode()) && m.getMenuType() == 2) {
-                viewablePageIds.add(m.getId());
-            }
-        }
-
-        // 构建用户可见的菜单树：只包含可见的页面和其所属目录
         List<Menu> visibleMenus = new ArrayList<>();
         Set<Long> visibleDirIds = new HashSet<>();
 
-        for (Menu m : allMenus) {
-            if (m.getMenuType() == 2 && viewablePageIds.contains(m.getId())) {
-                visibleMenus.add(m);
-                if (m.getParentId() != null && m.getParentId() > 0) {
-                    visibleDirIds.add(m.getParentId());
+        for (Menu menu : allMenus) {
+            if (menu.getMenuType() == 2 && viewablePageIds.contains(menu.getId())) {
+                visibleMenus.add(menu);
+                if (menu.getParentId() != null && menu.getParentId() > 0) {
+                    visibleDirIds.add(menu.getParentId());
                 }
             }
         }
 
-        // 加入目录
-        for (Menu m : allMenus) {
-            if (m.getMenuType() == 1 && visibleDirIds.contains(m.getId())) {
-                visibleMenus.add(m);
+        for (Menu menu : allMenus) {
+            if (menu.getMenuType() == 1 && visibleDirIds.contains(menu.getId())) {
+                visibleMenus.add(menu);
             }
         }
 
@@ -113,42 +107,66 @@ public class MenuService {
     public List<String> getPermissionsByUserId(Long userId) {
         List<UserRole> userRoles = userRoleRepository.findByUserId(userId);
 
-        for (UserRole ur : userRoles) {
-            Role role = roleRepository.findById(ur.getRoleId()).orElse(null);
-            if (role != null && "admin".equalsIgnoreCase(role.getRoleCode())) {
+        for (UserRole userRole : userRoles) {
+            Role role = roleRepository.findById(userRole.getRoleId()).orElse(null);
+            if (role != null && ADMIN_ROLE_CODE.equalsIgnoreCase(role.getRoleCode())) {
                 List<Menu> allMenus = menuRepository.findByStatusOrderBySortOrder(1);
                 return allMenus.stream()
-                        .filter(m -> m.getPerms() != null)
+                        .filter(menu -> menu.getPerms() != null)
                         .map(Menu::getPerms)
                         .collect(Collectors.toList());
             }
         }
 
         Set<Long> menuIds = new HashSet<>();
-        for (UserRole ur : userRoles) {
-            List<RoleMenu> roleMenus = roleMenuRepository.findByRoleId(ur.getRoleId());
-            for (RoleMenu rm : roleMenus) {
-                menuIds.add(rm.getMenuId());
+        for (UserRole userRole : userRoles) {
+            List<RoleMenu> roleMenus = roleMenuRepository.findByRoleId(userRole.getRoleId());
+            for (RoleMenu roleMenu : roleMenus) {
+                menuIds.add(roleMenu.getMenuId());
             }
         }
 
         List<Menu> allMenus = menuRepository.findByStatusOrderBySortOrder(1);
         return allMenus.stream()
-                .filter(m -> menuIds.contains(m.getId()) && m.getPerms() != null)
+                .filter(menu -> menuIds.contains(menu.getId()) && menu.getPerms() != null)
                 .map(Menu::getPerms)
                 .collect(Collectors.toList());
+    }
+
+    private Set<Long> collectViewablePageIds(Set<Long> menuIds, List<Menu> allMenus) {
+        Set<Long> viewablePageIds = new HashSet<>();
+        for (Menu menu : allMenus) {
+            if (menu.getMenuType() == 3
+                    && menu.getPerms() != null
+                    && menu.getPerms().endsWith(":view")
+                    && menuIds.contains(menu.getId())) {
+                viewablePageIds.add(menu.getParentId());
+            }
+        }
+        return viewablePageIds;
+    }
+
+    private Set<String> getRoleCodes(List<UserRole> userRoles) {
+        Set<String> roleCodes = new HashSet<>();
+        for (UserRole userRole : userRoles) {
+            Role role = roleRepository.findById(userRole.getRoleId()).orElse(null);
+            if (role != null && role.getRoleCode() != null) {
+                roleCodes.add(role.getRoleCode().toLowerCase());
+            }
+        }
+        return roleCodes;
     }
 
     private List<Menu> buildTree(List<Menu> menus) {
         Map<Long, List<Menu>> childrenMap = new LinkedHashMap<>();
         List<Menu> roots = new ArrayList<>();
 
-        for (Menu m : menus) {
-            if (m.getMenuType() == 3) continue; // 按钮不参与菜单树
-            if (m.getParentId() == null || m.getParentId() == 0) {
-                roots.add(m);
+        for (Menu menu : menus) {
+            if (menu.getMenuType() == 3) continue;
+            if (menu.getParentId() == null || menu.getParentId() == 0) {
+                roots.add(menu);
             } else {
-                childrenMap.computeIfAbsent(m.getParentId(), k -> new ArrayList<>()).add(m);
+                childrenMap.computeIfAbsent(menu.getParentId(), k -> new ArrayList<>()).add(menu);
             }
         }
 
@@ -163,11 +181,11 @@ public class MenuService {
         Map<Long, List<Menu>> childrenMap = new LinkedHashMap<>();
         List<Menu> roots = new ArrayList<>();
 
-        for (Menu m : menus) {
-            if (m.getParentId() == null || m.getParentId() == 0) {
-                roots.add(m);
+        for (Menu menu : menus) {
+            if (menu.getParentId() == null || menu.getParentId() == 0) {
+                roots.add(menu);
             } else {
-                childrenMap.computeIfAbsent(m.getParentId(), k -> new ArrayList<>()).add(m);
+                childrenMap.computeIfAbsent(menu.getParentId(), k -> new ArrayList<>()).add(menu);
             }
         }
 
@@ -180,7 +198,9 @@ public class MenuService {
 
     private List<Menu> getChildren(Long parentId, Map<Long, List<Menu>> childrenMap) {
         List<Menu> children = childrenMap.get(parentId);
-        if (children == null) return new ArrayList<>();
+        if (children == null) {
+            return new ArrayList<>();
+        }
         for (Menu child : children) {
             child.setChildren(getChildren(child.getId(), childrenMap));
         }
