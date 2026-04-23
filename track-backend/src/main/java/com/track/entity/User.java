@@ -22,6 +22,8 @@ public class User {
 
     private String avatar;
 
+    private Long primaryDeptId;
+
     private Integer status;
 
     private LocalDateTime createTime;
@@ -75,6 +77,14 @@ public class User {
 
     public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    public Long getPrimaryDeptId() {
+        return primaryDeptId;
+    }
+
+    public void setPrimaryDeptId(Long primaryDeptId) {
+        this.primaryDeptId = primaryDeptId;
     }
 
     public LocalDateTime getCreateTime() {

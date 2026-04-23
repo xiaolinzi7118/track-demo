@@ -47,3 +47,10 @@ export function getDictParamIdsList(paramIds) {
     data: { paramIds }
   })
 }
+
+export function getDeptOptions() {
+  return request({
+    url: '/dict-param/dept-options',
+    method: 'get'
+  })
+}

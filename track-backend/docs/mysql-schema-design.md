@@ -20,6 +20,7 @@
 - `sys_role` 角色表
 - `sys_menu` 菜单/按钮权限表
 - `sys_user_role` 用户-角色关联表
+- `sys_user_data_dept` 用户-数据授权部门关联表
 - `sys_role_menu` 角色-菜单关联表
 - `track_config` 埋点配置表
 - `track_data` 埋点上报数据表
@@ -36,11 +37,16 @@
   - `sys_role_menu` 增加唯一键 `(role_id, menu_id)`。
 - RBAC 外键：
   - 关联表对主表采用 `ON DELETE CASCADE`。
+- 组织与数据权限：
+  - `sys_user.primary_dept_id` 表示用户唯一所属部门（来自 `dict_param_item`，`param_id=SYS_DEPT`）。
+  - `sys_user_data_dept` 支持用户多部门数据授权。
+  - 业务数据表 `track_config`/`api_interface`/`track_data` 增加 `dept_id` 用于数据范围过滤。
 - 菜单结构：
   - `menu_type`: `1=目录`, `2=页面`, `3=按钮`。
   - 按钮权限标识通过 `perms` 字段维护，如 `system-role:edit`。
 - 参数维护：
   - 主表软删除字段：`status`，`0=生效`，`1=已删除`。
+  - 主表系统标记：`is_system`，`1=系统内置参数`（如部门参数 `SYS_DEPT`）。
   - 参数名称唯一性仅对 `status=0` 生效，通过 `active_name` 生成列唯一索引保证。
   - 参数业务ID格式：`DICT + yyyyMMdd + 8位序号`，序号由 `dict_id_sequence` 并发安全生成。
   - 参数维护接口采用后端角色硬校验，仅允许 `admin/developer`。
@@ -53,6 +59,8 @@
 
 - 默认账号：`admin / 123456`
 - 角色：`admin`、`business`、`developer`
+- 默认部门参数：`SYS_DEPT`
+- 默认部门：`DEFAULT / 默认部门`
 
 ### 5.2 菜单与按钮（26 条）
 
@@ -82,6 +90,10 @@
 1. `01_schema.sql`：建表脚本（DDL）
 2. `02_init_data.sql`：基础初始化数据（用户/角色/菜单）
 3. `03_init_permissions.sql`：权限初始化（用户角色、角色菜单）
+
+增量变更脚本（docs）：
+
+- `docs/20260423_rbac_dept_data_scope.sql`：RBAC + 部门数据权限改造脚本
 
 ## 7. 执行顺序
 

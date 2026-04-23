@@ -18,6 +18,9 @@ public class DictParam {
     private String paramName;
 
     @Column(nullable = false)
+    private Integer isSystem;
+
+    @Column(nullable = false)
     private Integer status;
 
     private String createBy;
@@ -64,6 +67,14 @@ public class DictParam {
 
     public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    public Integer getIsSystem() {
+        return isSystem;
+    }
+
+    public void setIsSystem(Integer isSystem) {
+        this.isSystem = isSystem;
     }
 
     public String getCreateBy() {

@@ -19,6 +19,8 @@ public class ApiInterface {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    private Long deptId;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;
@@ -56,6 +58,14 @@ public class ApiInterface {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public Long getDeptId() {
+        return deptId;
+    }
+
+    public void setDeptId(Long deptId) {
+        this.deptId = deptId;
     }
 
     public LocalDateTime getCreateTime() {

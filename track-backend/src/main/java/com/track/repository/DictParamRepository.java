@@ -17,4 +17,6 @@ public interface DictParamRepository extends JpaRepository<DictParam, Long>, Jpa
     List<DictParam> findByParamIdIn(List<String> paramIds);
 
     Optional<DictParam> findByParamId(String paramId);
+
+    Optional<DictParam> findByParamIdAndStatus(String paramId, Integer status);
 }

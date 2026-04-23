@@ -78,6 +78,7 @@ public class DictParamService {
         DictParam entity = new DictParam();
         entity.setParamId(generateParamId(now));
         entity.setParamName(paramName);
+        entity.setIsSystem(0);
         entity.setStatus(0);
         entity.setCreateBy(username);
         entity.setUpdateBy(username);
@@ -121,6 +122,10 @@ public class DictParamService {
         LocalDateTime now = LocalDateTime.now();
         String username = getCurrentUsername();
 
+        if (existing.getIsSystem() != null && existing.getIsSystem() == 1) {
+            return Result.error("System parameter cannot be renamed");
+        }
+
         existing.setParamName(paramName);
         existing.setUpdateBy(username);
         existing.setUpdateTime(now);
@@ -142,6 +147,10 @@ public class DictParamService {
 
         LocalDateTime now = LocalDateTime.now();
         String username = getCurrentUsername();
+
+        if (existing.getIsSystem() != null && existing.getIsSystem() == 1) {
+            return Result.error("System parameter cannot be deleted");
+        }
 
         existing.setStatus(1);
         existing.setUpdateBy(username);
@@ -194,6 +203,11 @@ public class DictParamService {
             result.add(param);
         }
         return Result.success(result);
+    }
+
+    public Result<List<DictParamItem>> deptOptions() {
+        List<DictParamItem> depts = dictParamItemRepository.findByParamIdAndStatusOrderByIdAsc(DataPermissionService.DEPT_PARAM_ID, 0);
+        return Result.success(depts);
     }
 
     private void saveItems(String paramId, List<DictParamItem> items, String username, LocalDateTime now) {

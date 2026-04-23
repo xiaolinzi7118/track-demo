@@ -6,11 +6,13 @@ CREATE TABLE IF NOT EXISTS sys_user (
     password VARCHAR(255) NOT NULL,
     nickname VARCHAR(100) DEFAULT NULL,
     avatar VARCHAR(255) DEFAULT NULL,
+    primary_dept_id BIGINT DEFAULT NULL COMMENT '所属部门(dict_param_item.id)',
     status TINYINT NOT NULL DEFAULT 1,
     create_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     update_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     PRIMARY KEY (id),
-    UNIQUE KEY uk_sys_user_username (username)
+    UNIQUE KEY uk_sys_user_username (username),
+    KEY idx_sys_user_primary_dept_id (primary_dept_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS sys_role (
@@ -74,13 +76,15 @@ CREATE TABLE IF NOT EXISTS track_config (
     description TEXT,
     params TEXT,
     url_pattern TEXT,
+    dept_id BIGINT DEFAULT NULL COMMENT '数据所属部门(dict_param_item.id)',
     status TINYINT DEFAULT 1,
     create_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     update_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     PRIMARY KEY (id),
     KEY idx_track_config_event_code (event_code),
     KEY idx_track_config_event_type (event_type),
-    KEY idx_track_config_create_time (create_time)
+    KEY idx_track_config_create_time (create_time),
+    KEY idx_track_config_dept_create (dept_id, create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS track_data (
@@ -94,11 +98,13 @@ CREATE TABLE IF NOT EXISTS track_data (
     user_agent VARCHAR(1024) DEFAULT NULL,
     ip VARCHAR(64) DEFAULT NULL,
     duration BIGINT DEFAULT NULL,
+    dept_id BIGINT DEFAULT NULL COMMENT '数据所属部门(dict_param_item.id)',
     event_time DATETIME(3) DEFAULT NULL,
     create_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     PRIMARY KEY (id),
     KEY idx_track_data_event_time (event_time),
-    KEY idx_track_data_query (event_code, event_type, user_id)
+    KEY idx_track_data_query (event_code, event_type, user_id),
+    KEY idx_track_data_dept_event_time (dept_id, event_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS api_interface (
@@ -106,16 +112,19 @@ CREATE TABLE IF NOT EXISTS api_interface (
     name VARCHAR(255) NOT NULL,
     path VARCHAR(255) NOT NULL,
     description TEXT,
+    dept_id BIGINT DEFAULT NULL COMMENT '数据所属部门(dict_param_item.id)',
     create_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     update_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     PRIMARY KEY (id),
-    UNIQUE KEY uk_api_interface_path (path)
+    UNIQUE KEY uk_api_interface_path (path),
+    KEY idx_api_interface_dept_create (dept_id, create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS dict_param (
     id BIGINT NOT NULL AUTO_INCREMENT,
     param_id VARCHAR(32) NOT NULL,
     param_name VARCHAR(100) NOT NULL,
+    is_system TINYINT NOT NULL DEFAULT 0 COMMENT '0-normal, 1-system',
     status TINYINT NOT NULL DEFAULT 0 COMMENT '0-active, 1-deleted',
     create_by VARCHAR(64) DEFAULT NULL,
     create_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
@@ -150,4 +159,17 @@ CREATE TABLE IF NOT EXISTS dict_id_sequence (
     seq INT NOT NULL,
     update_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     PRIMARY KEY (biz_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS sys_user_data_dept (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    dept_id BIGINT NOT NULL COMMENT '数据授权部门(dict_param_item.id)',
+    create_by VARCHAR(64) DEFAULT NULL,
+    create_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_sys_user_data_dept (user_id, dept_id),
+    KEY idx_sys_user_data_dept_dept_id (dept_id),
+    CONSTRAINT fk_sys_user_data_dept_user FOREIGN KEY (user_id) REFERENCES sys_user (id) ON DELETE CASCADE,
+    CONSTRAINT fk_sys_user_data_dept_dept FOREIGN KEY (dept_id) REFERENCES dict_param_item (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

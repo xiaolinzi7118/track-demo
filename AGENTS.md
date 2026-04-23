@@ -103,4 +103,5 @@ npm run dev
 
 ## 常见开发任务规范
 
+- 管理平台前端界面文本使用中文。
 - 涉及到数据库表结构或字段变更，必须更新表结构设计文档到track-backend\docs目录下，以及更新track-backend\src\main\resources\db\mysql目录下的建表SQL脚本+初始化数据脚本+权限初始化脚本，方便后面初始化部署；以及在track-backen\docs目录下输出此次相关变更的sql脚本。

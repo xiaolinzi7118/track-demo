@@ -3,6 +3,7 @@ package com.track.controller;
 import com.track.common.PermissionChecker;
 import com.track.common.Result;
 import com.track.entity.DictParam;
+import com.track.entity.DictParamItem;
 import com.track.service.DictParamService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -55,5 +56,11 @@ public class DictParamController {
     public Result<List<DictParam>> idsList(@RequestBody Map<String, List<String>> request) {
         List<String> paramIds = request == null ? new ArrayList<>() : request.get("paramIds");
         return dictParamService.idsList(paramIds);
+    }
+
+    @GetMapping("/dept-options")
+    public Result<List<DictParamItem>> deptOptions() {
+        permissionChecker.checkPermission("system-user:view");
+        return dictParamService.deptOptions();
     }
 }

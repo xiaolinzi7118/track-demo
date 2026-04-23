@@ -28,6 +28,8 @@ public class TrackConfig {
     @Column(columnDefinition = "TEXT")
     private String urlPattern;
 
+    private Long deptId;
+
     private Integer status;
 
     private LocalDateTime createTime;
@@ -96,6 +98,14 @@ public class TrackConfig {
 
     public void setStatus(Integer status) {
         this.status = status;
+    }
+
+    public Long getDeptId() {
+        return deptId;
+    }
+
+    public void setDeptId(Long deptId) {
+        this.deptId = deptId;
     }
 
     public LocalDateTime getCreateTime() {

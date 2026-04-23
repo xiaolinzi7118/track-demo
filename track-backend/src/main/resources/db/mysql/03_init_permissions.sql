@@ -52,4 +52,11 @@ WHERE r.role_code = 'developer'
   )
 ON DUPLICATE KEY UPDATE role_id = VALUES(role_id);
 
+INSERT INTO sys_user_data_dept (user_id, dept_id, create_by, create_time)
+SELECT u.id, u.primary_dept_id, 'system', NOW(3)
+FROM sys_user u
+WHERE u.primary_dept_id IS NOT NULL
+ON DUPLICATE KEY UPDATE
+    create_by = VALUES(create_by);
+
 COMMIT;

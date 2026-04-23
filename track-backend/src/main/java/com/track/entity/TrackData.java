@@ -31,6 +31,8 @@ public class TrackData {
 
     private Long duration;
 
+    private Long deptId;
+
     private LocalDateTime eventTime;
 
     private LocalDateTime createTime;
@@ -113,6 +115,14 @@ public class TrackData {
 
     public void setDuration(Long duration) {
         this.duration = duration;
+    }
+
+    public Long getDeptId() {
+        return deptId;
+    }
+
+    public void setDeptId(Long deptId) {
+        this.deptId = deptId;
     }
 
     public LocalDateTime getEventTime() {
