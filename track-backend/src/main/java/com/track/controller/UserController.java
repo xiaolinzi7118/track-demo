@@ -145,10 +145,10 @@ public class UserController {
     }
 
     @PostMapping("/delete")
+    @Transactional
     public Result<Void> delete(@RequestBody Map<String, Long> request) {
         permissionChecker.checkPermission("system-user:delete");
         Long id = request.get("id");
-        userRoleRepository.deleteByUserId(id);
         return userService.deleteUser(id);
     }
 
