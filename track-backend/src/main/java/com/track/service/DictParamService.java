@@ -122,7 +122,8 @@ public class DictParamService {
         LocalDateTime now = LocalDateTime.now();
         String username = getCurrentUsername();
 
-        if (existing.getIsSystem() != null && existing.getIsSystem() == 1) {
+        if (existing.getIsSystem() != null && existing.getIsSystem() == 1
+                && !paramName.equals(existing.getParamName())) {
             return Result.error("System parameter cannot be renamed");
         }
 
