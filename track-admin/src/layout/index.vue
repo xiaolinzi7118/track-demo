@@ -2,7 +2,7 @@
   <el-container class="layout-container">
     <el-aside width="200px" class="aside">
       <div class="logo">
-        <h2>埋点管理平台</h2>
+        <h2>埋点需求管理平台</h2>
       </div>
       <el-menu
         :default-active="activeMenu"

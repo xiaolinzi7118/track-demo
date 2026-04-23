@@ -1,7 +1,7 @@
 <template>
   <div class="login-container">
     <div class="login-box">
-      <h2 class="login-title">埋点管理平台</h2>
+      <h2 class="login-title">埋点需求管理平台</h2>
       <el-form
         ref="loginFormRef"
         :model="loginForm"
