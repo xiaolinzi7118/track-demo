@@ -1,15 +1,11 @@
 package com.track.service;
 
 import com.track.entity.DictParamItem;
-import com.track.entity.Role;
 import com.track.entity.User;
 import com.track.entity.UserDataDept;
-import com.track.entity.UserRole;
 import com.track.repository.DictParamItemRepository;
-import com.track.repository.RoleRepository;
 import com.track.repository.UserDataDeptRepository;
 import com.track.repository.UserRepository;
-import com.track.repository.UserRoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -21,13 +17,6 @@ public class DataPermissionService {
 
     public static final String DEPT_PARAM_ID = "SYS_DEPT";
     public static final String DEFAULT_DEPT_CODE = "DEFAULT";
-    private static final String ADMIN_ROLE_CODE = "admin";
-
-    @Autowired
-    private UserRoleRepository userRoleRepository;
-
-    @Autowired
-    private RoleRepository roleRepository;
 
     @Autowired
     private UserRepository userRepository;
@@ -38,25 +27,19 @@ public class DataPermissionService {
     @Autowired
     private DictParamItemRepository dictParamItemRepository;
 
-    public boolean isAdmin(Long userId) {
+    public boolean isBuiltInSuperAdmin(Long userId) {
         if (userId == null) {
             return false;
         }
-        List<UserRole> userRoles = userRoleRepository.findByUserId(userId);
-        for (UserRole ur : userRoles) {
-            Role role = roleRepository.findById(ur.getRoleId()).orElse(null);
-            if (role != null && role.getRoleCode() != null && ADMIN_ROLE_CODE.equalsIgnoreCase(role.getRoleCode())) {
-                return true;
-            }
-        }
-        return false;
+        User user = userRepository.findById(userId).orElse(null);
+        return user != null && Integer.valueOf(UserService.BUILTIN_SUPER_ADMIN_YES).equals(user.getIsBuiltinSuperAdmin());
     }
 
     public DataScope getDataScope(Long userId) {
         if (userId == null) {
             return DataScope.none();
         }
-        if (isAdmin(userId)) {
+        if (isBuiltInSuperAdmin(userId)) {
             return DataScope.all();
         }
         Set<Long> deptIds = getVisibleDeptIds(userId);

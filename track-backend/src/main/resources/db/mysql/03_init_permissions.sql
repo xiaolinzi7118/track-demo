@@ -3,7 +3,7 @@
 DELETE rm
 FROM sys_role_menu rm
 JOIN sys_role r ON rm.role_id = r.id
-WHERE r.role_code IN ('admin', 'business', 'developer');
+WHERE r.role_code IN ('business', 'developer');
 
 DELETE ur
 FROM sys_user_role ur
@@ -16,13 +16,6 @@ FROM sys_user u
 JOIN sys_role r ON r.role_code = 'admin'
 WHERE u.username = 'admin'
 ON DUPLICATE KEY UPDATE user_id = VALUES(user_id);
-
-INSERT INTO sys_role_menu (role_id, menu_id)
-SELECT r.id, m.id
-FROM sys_role r
-JOIN sys_menu m
-WHERE r.role_code = 'admin'
-ON DUPLICATE KEY UPDATE role_id = VALUES(role_id);
 
 INSERT INTO sys_role_menu (role_id, menu_id)
 SELECT r.id, m.id

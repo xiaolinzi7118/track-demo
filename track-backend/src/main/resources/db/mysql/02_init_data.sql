@@ -29,16 +29,17 @@ WHERE NOT EXISTS (
     WHERE param_id = 'SYS_DEPT' AND item_code = 'DEFAULT' AND status = 0
 );
 
-INSERT INTO sys_user (id, username, password, nickname, avatar, primary_dept_id, status, create_time, update_time)
+INSERT INTO sys_user (id, username, password, nickname, avatar, primary_dept_id, status, is_builtin_super_admin, create_time, update_time)
 VALUES
     (1, 'admin', '123456', '管理员', NULL,
         (SELECT id FROM dict_param_item WHERE param_id = 'SYS_DEPT' AND item_code = 'DEFAULT' AND status = 0 ORDER BY id ASC LIMIT 1),
-        1, NOW(3), NOW(3))
+        1, 1, NOW(3), NOW(3))
 ON DUPLICATE KEY UPDATE
     password = VALUES(password),
     nickname = VALUES(nickname),
     primary_dept_id = VALUES(primary_dept_id),
     status = VALUES(status),
+    is_builtin_super_admin = VALUES(is_builtin_super_admin),
     update_time = VALUES(update_time);
 
 DELETE FROM sys_menu

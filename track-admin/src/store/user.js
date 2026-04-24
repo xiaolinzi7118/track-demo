@@ -37,7 +37,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   const hasPermission = (perm) => {
-    if (userInfo.value.roles && userInfo.value.roles.some(r => r.toLowerCase() === 'admin')) return true
+    if (userInfo.value.isSuperAdmin === true) return true
     return permissions.value.includes(perm)
   }
 

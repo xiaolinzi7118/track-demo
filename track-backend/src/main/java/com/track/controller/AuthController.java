@@ -122,6 +122,7 @@ public class AuthController {
         info.put("username", user.getUsername());
         info.put("nickname", user.getNickname());
         info.put("avatar", user.getAvatar());
+        info.put("isSuperAdmin", Integer.valueOf(UserService.BUILTIN_SUPER_ADMIN_YES).equals(user.getIsBuiltinSuperAdmin()));
         info.put("roles", roleCodes);
         info.put("roleIds", roleIds);
         info.put("roleNames", roleNames);

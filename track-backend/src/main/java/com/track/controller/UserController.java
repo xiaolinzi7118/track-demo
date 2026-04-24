@@ -58,6 +58,9 @@ public class UserController {
                             || (u.getNickname() != null && u.getNickname().contains(key)))
                     .collect(Collectors.toList());
         }
+        users = users.stream()
+                .filter(u -> !userService.isBuiltInSuperAdmin(u))
+                .collect(Collectors.toList());
         return Result.success(buildUserListResponse(users));
     }
 
@@ -66,7 +69,7 @@ public class UserController {
         permissionChecker.checkPermission("system-user:view");
 
         User user = userService.findById(id);
-        if (user == null) {
+        if (user == null || userService.isBuiltInSuperAdmin(user)) {
             return Result.error("User does not exist");
         }
 
@@ -114,6 +117,13 @@ public class UserController {
         if (id == null) {
             return Result.error("id is required");
         }
+        User existing = userService.findById(id);
+        if (existing == null) {
+            return Result.error("User does not exist");
+        }
+        if (userService.isBuiltInSuperAdmin(existing)) {
+            return Result.error("Built-in super admin cannot be updated");
+        }
 
         User user = new User();
         user.setId(id);
@@ -159,6 +169,9 @@ public class UserController {
         if (id == null) {
             return Result.error("id is required");
         }
+        if (userService.isBuiltInSuperAdmin(id)) {
+            return Result.error("Built-in super admin cannot be updated");
+        }
         return userService.updatePassword(id, password);
     }
 
@@ -169,6 +182,9 @@ public class UserController {
         Integer status = request.get("status") == null ? null : Integer.valueOf(request.get("status").toString());
         if (id == null || status == null) {
             return Result.error("id and status are required");
+        }
+        if (userService.isBuiltInSuperAdmin(id)) {
+            return Result.error("Built-in super admin status cannot be changed");
         }
         return userService.updateStatus(id, status);
     }
@@ -224,6 +240,7 @@ public class UserController {
             item.put("avatar", user.getAvatar());
             item.put("status", user.getStatus());
             item.put("createTime", user.getCreateTime());
+            item.put("isSuperAdmin", userService.isBuiltInSuperAdmin(user));
             item.put("primaryDeptId", user.getPrimaryDeptId());
             DictParamItem primaryDept = user.getPrimaryDeptId() == null ? null : deptMap.get(user.getPrimaryDeptId());
             item.put("primaryDeptName", primaryDept == null ? null : primaryDept.getItemName());
@@ -274,6 +291,9 @@ public class UserController {
     }
 
     private void saveUserRoles(Long userId, List<Long> roleIds) {
+        if (userService.isBuiltInSuperAdmin(userId)) {
+            return;
+        }
         userRoleRepository.deleteByUserId(userId);
         if (roleIds == null) {
             return;
@@ -287,6 +307,9 @@ public class UserController {
     }
 
     private void saveUserDataDepts(Long userId, Long primaryDeptId, List<Long> requestDataDeptIds, String operator) {
+        if (userService.isBuiltInSuperAdmin(userId)) {
+            return;
+        }
         userDataDeptRepository.deleteByUserId(userId);
 
         Set<Long> targetDeptIds = new LinkedHashSet<>(dataPermissionService.normalizeDeptIds(requestDataDeptIds));

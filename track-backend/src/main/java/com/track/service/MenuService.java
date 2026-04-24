@@ -3,10 +3,12 @@ package com.track.service;
 import com.track.entity.Menu;
 import com.track.entity.Role;
 import com.track.entity.RoleMenu;
+import com.track.entity.User;
 import com.track.entity.UserRole;
 import com.track.repository.MenuRepository;
 import com.track.repository.RoleMenuRepository;
 import com.track.repository.RoleRepository;
+import com.track.repository.UserRepository;
 import com.track.repository.UserRoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -17,7 +19,6 @@ import java.util.stream.Collectors;
 @Service
 public class MenuService {
 
-    private static final String ADMIN_ROLE_CODE = "admin";
     private static final String DEVELOPER_ROLE_CODE = "developer";
     private static final String DASHBOARD_MENU_CODE = "dashboard";
     private static final String DICT_PARAM_MENU_CODE = "system-dict-param";
@@ -34,6 +35,9 @@ public class MenuService {
     @Autowired
     private RoleRepository roleRepository;
 
+    @Autowired
+    private UserRepository userRepository;
+
     public List<Menu> getMenuTree() {
         List<Menu> allMenus = menuRepository.findByStatusOrderBySortOrder(1);
         return buildTree(allMenus);
@@ -47,12 +51,12 @@ public class MenuService {
     }
 
     public List<Menu> getMenusByUserId(Long userId) {
-        List<UserRole> userRoles = userRoleRepository.findByUserId(userId);
-        Set<String> roleCodes = getRoleCodes(userRoles);
-
-        if (roleCodes.contains(ADMIN_ROLE_CODE)) {
+        if (isBuiltInSuperAdmin(userId)) {
             return getMenuTree();
         }
+
+        List<UserRole> userRoles = userRoleRepository.findByUserId(userId);
+        Set<String> roleCodes = getRoleCodes(userRoles);
 
         Set<Long> menuIds = new HashSet<>();
         for (UserRole userRole : userRoles) {
@@ -105,18 +109,15 @@ public class MenuService {
     }
 
     public List<String> getPermissionsByUserId(Long userId) {
-        List<UserRole> userRoles = userRoleRepository.findByUserId(userId);
-
-        for (UserRole userRole : userRoles) {
-            Role role = roleRepository.findById(userRole.getRoleId()).orElse(null);
-            if (role != null && ADMIN_ROLE_CODE.equalsIgnoreCase(role.getRoleCode())) {
-                List<Menu> allMenus = menuRepository.findByStatusOrderBySortOrder(1);
-                return allMenus.stream()
-                        .filter(menu -> menu.getPerms() != null)
-                        .map(Menu::getPerms)
-                        .collect(Collectors.toList());
-            }
+        if (isBuiltInSuperAdmin(userId)) {
+            List<Menu> allMenus = menuRepository.findByStatusOrderBySortOrder(1);
+            return allMenus.stream()
+                    .filter(menu -> menu.getPerms() != null)
+                    .map(Menu::getPerms)
+                    .collect(Collectors.toList());
         }
+
+        List<UserRole> userRoles = userRoleRepository.findByUserId(userId);
 
         Set<Long> menuIds = new HashSet<>();
         for (UserRole userRole : userRoles) {
@@ -131,6 +132,14 @@ public class MenuService {
                 .filter(menu -> menuIds.contains(menu.getId()) && menu.getPerms() != null)
                 .map(Menu::getPerms)
                 .collect(Collectors.toList());
+    }
+
+    private boolean isBuiltInSuperAdmin(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        User user = userRepository.findById(userId).orElse(null);
+        return user != null && Integer.valueOf(UserService.BUILTIN_SUPER_ADMIN_YES).equals(user.getIsBuiltinSuperAdmin());
     }
 
     private Set<Long> collectViewablePageIds(Set<Long> menuIds, List<Menu> allMenus) {

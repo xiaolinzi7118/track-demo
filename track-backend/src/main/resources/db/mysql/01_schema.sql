@@ -8,11 +8,13 @@ CREATE TABLE IF NOT EXISTS sys_user (
     avatar VARCHAR(255) DEFAULT NULL,
     primary_dept_id BIGINT DEFAULT NULL COMMENT '所属部门(dict_param_item.id)',
     status TINYINT NOT NULL DEFAULT 1,
+    is_builtin_super_admin TINYINT NOT NULL DEFAULT 0 COMMENT '内置超级管理员标识(0-否,1-是)',
     create_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     update_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     PRIMARY KEY (id),
     UNIQUE KEY uk_sys_user_username (username),
-    KEY idx_sys_user_primary_dept_id (primary_dept_id)
+    KEY idx_sys_user_primary_dept_id (primary_dept_id),
+    KEY idx_sys_user_builtin_super_admin (is_builtin_super_admin)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS sys_role (

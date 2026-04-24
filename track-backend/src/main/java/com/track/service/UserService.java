@@ -13,6 +13,8 @@ import java.util.List;
 
 @Service
 public class UserService {
+    public static final int BUILTIN_SUPER_ADMIN_YES = 1;
+
 
     @Autowired
     private UserRepository userRepository;
@@ -47,6 +49,10 @@ public class UserService {
         }
         if (userRepository.findByUsername(user.getUsername()) != null) {
             return Result.error("Username already exists");
+        }
+
+        if (user.getIsBuiltinSuperAdmin() == null) {
+            user.setIsBuiltinSuperAdmin(0);
         }
 
         Long primaryDeptId = dataPermissionService.resolvePrimaryDeptId(user.getPrimaryDeptId());
@@ -100,8 +106,8 @@ public class UserService {
         if (user == null) {
             return Result.error("User does not exist");
         }
-        if ("admin".equals(user.getUsername())) {
-            return Result.error("Admin user cannot be deleted");
+        if (isBuiltInSuperAdmin(user)) {
+            return Result.error("Built-in super admin cannot be deleted");
         }
         userRoleRepository.deleteByUserId(id);
         userDataDeptRepository.deleteByUserId(id);
@@ -114,6 +120,9 @@ public class UserService {
         if (user == null) {
             return Result.error("User does not exist");
         }
+        if (isBuiltInSuperAdmin(user)) {
+            return Result.error("Built-in super admin cannot be updated");
+        }
         user.setPassword(password);
         user.setUpdateTime(LocalDateTime.now());
         userRepository.save(user);
@@ -125,12 +134,24 @@ public class UserService {
         if (user == null) {
             return Result.error("User does not exist");
         }
-        if ("admin".equals(user.getUsername()) && status != 1) {
-            return Result.error("Admin user cannot be disabled");
+        if (isBuiltInSuperAdmin(user)) {
+            return Result.error("Built-in super admin status cannot be changed");
         }
         user.setStatus(status);
         user.setUpdateTime(LocalDateTime.now());
         userRepository.save(user);
         return Result.success();
+    }
+
+    public boolean isBuiltInSuperAdmin(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        User user = findById(userId);
+        return isBuiltInSuperAdmin(user);
+    }
+
+    public boolean isBuiltInSuperAdmin(User user) {
+        return user != null && Integer.valueOf(BUILTIN_SUPER_ADMIN_YES).equals(user.getIsBuiltinSuperAdmin());
     }
 }

@@ -53,7 +53,7 @@
               v-permission="'system-user:delete'"
               link
               type="danger"
-              :disabled="row.username === 'admin'"
+              :disabled="row.isSuperAdmin === true"
               @click="handleDelete(row)"
             >
               删除
@@ -168,7 +168,8 @@ const buildFormDefaults = () => ({
 const loadUsers = async () => {
   const res = await getUserList({})
   if (res.code === 200) {
-    tableData.value = res.data || []
+    const users = res.data || []
+    tableData.value = users.filter(item => item.isSuperAdmin !== true)
   }
 }
 
@@ -193,6 +194,10 @@ const handleAdd = () => {
 }
 
 const handleEdit = (row) => {
+  if (row.isSuperAdmin === true) {
+    ElMessage.warning('内置超级管理员不可编辑')
+    return
+  }
   dialogTitle.value = '编辑用户'
   Object.assign(userForm, {
     id: row.id,
@@ -256,6 +261,10 @@ const submitUser = async () => {
 }
 
 const handleDelete = async (row) => {
+  if (row.isSuperAdmin === true) {
+    ElMessage.warning('内置超级管理员不可删除')
+    return
+  }
   try {
     await ElMessageBox.confirm(`确认删除用户 "${row.username}" 吗？`, '提示', { type: 'warning' })
     const res = await deleteUser(row.id)
@@ -271,6 +280,10 @@ const handleDelete = async (row) => {
 }
 
 const handleResetPassword = async (row) => {
+  if (row.isSuperAdmin === true) {
+    ElMessage.warning('内置超级管理员不可修改密码')
+    return
+  }
   try {
     await ElMessageBox.prompt('请输入新密码', '重置密码', {
       inputValue: '123456',

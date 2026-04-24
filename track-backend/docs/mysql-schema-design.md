@@ -32,6 +32,9 @@
 ## 4. 关键设计点
 
 - 主键策略：`BIGINT AUTO_INCREMENT`（兼容 JPA `GenerationType.IDENTITY`）。
+- 内置超级管理员：
+  - `sys_user.is_builtin_super_admin`：`1=内置超级管理员账号`，该账号不参与普通用户管理维护。
+  - 内置超级管理员拥有全权限与全数据范围，不依赖角色菜单配置。
 - RBAC 约束：
   - `sys_user_role` 增加唯一键 `(user_id, role_id)`。
   - `sys_role_menu` 增加唯一键 `(role_id, menu_id)`。
@@ -49,7 +52,7 @@
   - 主表系统标记：`is_system`，`1=系统内置参数`（如部门参数 `SYS_DEPT`）。
   - 参数名称唯一性仅对 `status=0` 生效，通过 `active_name` 生成列唯一索引保证。
   - 参数业务ID格式：`DICT + yyyyMMdd + 8位序号`，序号由 `dict_id_sequence` 并发安全生成。
-  - 参数维护接口采用后端角色硬校验，仅允许 `admin/developer`。
+  - 参数维护接口采用后端角色硬校验：仅 `developer` 角色可访问；内置超级管理员账号通过超级管理员身份放行。
 - 重置数据能力：
   - 已从初始化菜单与权限中移除 `system-reset-data*`。
 
@@ -58,6 +61,7 @@
 ### 5.1 账号与角色
 
 - 默认账号：`admin / 123456`
+- 默认内置超级管理员：`admin`（`is_builtin_super_admin=1`）
 - 角色：`admin`、`business`、`developer`
 - 默认部门参数：`SYS_DEPT`
 - 默认部门：`DEFAULT / 默认部门`
@@ -78,10 +82,11 @@
 
 ### 5.3 权限初始化
 
-- `admin`：全菜单全权限。
+- 内置超级管理员账号：全菜单全权限（后端硬校验，不依赖角色关联）。
+- `admin` 角色：普通系统管理员角色，通过角色菜单配置控制权限。
 - `business`：仪表盘 + 埋点配置（全）+ 接口来源（全）+ 数据回检（查看）。
 - `developer`：仪表盘 + 埋点配置（查看）+ 接口来源（查看）+ 数据回检（查看）。
-- `admin` 用户自动绑定 `admin` 角色。
+- `admin` 用户初始化默认绑定 `admin` 角色（仅作为初始角色分配，不影响超级管理员身份判定）。
 
 ## 6. 脚本清单
 
@@ -94,6 +99,7 @@
 增量变更脚本（docs）：
 
 - `docs/20260423_rbac_dept_data_scope.sql`：RBAC + 部门数据权限改造脚本
+- `docs/20260423_builtin_super_admin_refactor.sql`：内置超级管理员与管理员角色解耦脚本
 
 ## 7. 执行顺序
 

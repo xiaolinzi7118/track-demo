@@ -26,6 +26,8 @@ public class User {
 
     private Integer status;
 
+    private Integer isBuiltinSuperAdmin;
+
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;
@@ -101,5 +103,13 @@ public class User {
 
     public void setUpdateTime(LocalDateTime updateTime) {
         this.updateTime = updateTime;
+    }
+
+    public Integer getIsBuiltinSuperAdmin() {
+        return isBuiltinSuperAdmin;
+    }
+
+    public void setIsBuiltinSuperAdmin(Integer isBuiltinSuperAdmin) {
+        this.isBuiltinSuperAdmin = isBuiltinSuperAdmin;
     }
 }

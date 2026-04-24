@@ -1,8 +1,10 @@
 package com.track.common;
 
 import com.track.entity.Role;
+import com.track.entity.User;
 import com.track.entity.UserRole;
 import com.track.repository.RoleRepository;
+import com.track.repository.UserRepository;
 import com.track.repository.UserRoleRepository;
 import com.track.service.MenuService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,9 @@ public class PermissionChecker {
     private RoleRepository roleRepository;
 
     @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
     private MenuService menuService;
 
     private final ConcurrentHashMap<Long, CachedPermissions> permissionCache = new ConcurrentHashMap<>();
@@ -43,8 +48,11 @@ public class PermissionChecker {
         Long userId = getCurrentUserId();
         if (userId == null) return false;
 
+        if (isBuiltInSuperAdmin(userId)) {
+            return true;
+        }
+
         Set<String> permissions = getPermissionsWithCache(userId);
-        if (isAdmin(userId)) return true;
 
         return permissions.contains(permission);
     }
@@ -70,6 +78,9 @@ public class PermissionChecker {
         if (targetRoles.isEmpty()) {
             return false;
         }
+        if (isBuiltInSuperAdmin(userId)) {
+            return true;
+        }
 
         List<UserRole> userRoles = userRoleRepository.findByUserId(userId);
         for (UserRole userRole : userRoles) {
@@ -87,15 +98,9 @@ public class PermissionChecker {
         }
     }
 
-    private boolean isAdmin(Long userId) {
-        List<UserRole> userRoles = userRoleRepository.findByUserId(userId);
-        for (UserRole ur : userRoles) {
-            Role role = roleRepository.findById(ur.getRoleId()).orElse(null);
-            if (role != null && "admin".equalsIgnoreCase(role.getRoleCode())) {
-                return true;
-            }
-        }
-        return false;
+    private boolean isBuiltInSuperAdmin(Long userId) {
+        User user = userRepository.findById(userId).orElse(null);
+        return user != null && Integer.valueOf(1).equals(user.getIsBuiltinSuperAdmin());
     }
 
     private Set<String> getPermissionsWithCache(Long userId) {

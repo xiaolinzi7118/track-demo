@@ -24,31 +24,31 @@ public class DictParamController {
 
     @GetMapping("/list")
     public Result<List<DictParam>> list(@RequestParam(required = false) String keyword) {
-        permissionChecker.checkAnyRole("admin", "developer");
+        permissionChecker.checkAnyRole("developer");
         return dictParamService.list(keyword);
     }
 
     @GetMapping("/detail")
     public Result<DictParam> detail(@RequestParam Long id) {
-        permissionChecker.checkAnyRole("admin", "developer");
+        permissionChecker.checkAnyRole("developer");
         return dictParamService.detail(id);
     }
 
     @PostMapping("/add")
     public Result<DictParam> add(@RequestBody DictParam request) {
-        permissionChecker.checkAnyRole("admin", "developer");
+        permissionChecker.checkAnyRole("developer");
         return dictParamService.add(request);
     }
 
     @PostMapping("/update")
     public Result<DictParam> update(@RequestBody DictParam request) {
-        permissionChecker.checkAnyRole("admin", "developer");
+        permissionChecker.checkAnyRole("developer");
         return dictParamService.update(request);
     }
 
     @PostMapping("/delete")
     public Result<Void> delete(@RequestBody Map<String, Long> request) {
-        permissionChecker.checkAnyRole("admin", "developer");
+        permissionChecker.checkAnyRole("developer");
         return dictParamService.delete(request.get("id"));
     }
 
