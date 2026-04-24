@@ -27,7 +27,8 @@ WHERE r.role_code = 'business'
       'track',
       'track-config', 'track-config:view', 'track-config:add', 'track-config:edit', 'track-config:delete',
       'api-interface', 'api-interface:view', 'api-interface:add', 'api-interface:edit', 'api-interface:delete',
-      'track-data', 'track-data:view'
+      'track-data', 'track-data:view',
+      'requirement-manage', 'requirement-manage:view', 'requirement-manage:add', 'requirement-manage:resubmit'
   )
 ON DUPLICATE KEY UPDATE role_id = VALUES(role_id);
 
@@ -41,7 +42,8 @@ WHERE r.role_code = 'developer'
       'track',
       'track-config', 'track-config:view',
       'api-interface', 'api-interface:view',
-      'track-data', 'track-data:view'
+      'track-data', 'track-data:view',
+      'requirement-manage', 'requirement-manage:view', 'requirement-manage:status'
   )
 ON DUPLICATE KEY UPDATE role_id = VALUES(role_id);
 

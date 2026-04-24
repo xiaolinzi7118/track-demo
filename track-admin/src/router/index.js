@@ -39,6 +39,18 @@ const routes = [
         meta: { title: '数据回检' }
       },
       {
+        path: 'requirement-manage',
+        name: 'RequirementManage',
+        component: () => import('../views/requirement-manage/index.vue'),
+        meta: { title: '需求管理' }
+      },
+      {
+        path: 'requirement-manage/detail',
+        name: 'RequirementDetail',
+        component: () => import('../views/requirement-manage/detail.vue'),
+        meta: { title: '需求详情', activeMenu: '/requirement-manage' }
+      },
+      {
         path: 'system/user',
         name: 'SystemUser',
         component: () => import('../views/system/user.vue'),

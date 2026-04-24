@@ -71,6 +71,12 @@ VALUES
     (13, 2, '数据回检', 'track-data', '/track-data', 'DataLine', 3, 2, NULL, 1, NOW(3), NOW(3)),
     (14, 13, '查看', 'track-data:view', NULL, NULL, 1, 3, 'track-data:view', 1, NOW(3), NOW(3)),
 
+    (27, 2, '需求管理', 'requirement-manage', '/requirement-manage', 'Tickets', 4, 2, NULL, 1, NOW(3), NOW(3)),
+    (28, 27, '查看', 'requirement-manage:view', NULL, NULL, 1, 3, 'requirement-manage:view', 1, NOW(3), NOW(3)),
+    (29, 27, '新增', 'requirement-manage:add', NULL, NULL, 2, 3, 'requirement-manage:add', 1, NOW(3), NOW(3)),
+    (30, 27, '状态变更', 'requirement-manage:status', NULL, NULL, 3, 3, 'requirement-manage:status', 1, NOW(3), NOW(3)),
+    (31, 27, '重新提交', 'requirement-manage:resubmit', NULL, NULL, 4, 3, 'requirement-manage:resubmit', 1, NOW(3), NOW(3)),
+
     (15, 0, '系统管理', 'system', '/system', 'Tools', 3, 1, NULL, 1, NOW(3), NOW(3)),
 
     (16, 15, '用户管理', 'system-user', '/system/user', 'User', 1, 2, NULL, 1, NOW(3), NOW(3)),

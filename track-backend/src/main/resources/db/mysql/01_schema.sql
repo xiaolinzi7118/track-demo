@@ -109,6 +109,49 @@ CREATE TABLE IF NOT EXISTS track_data (
     KEY idx_track_data_dept_event_time (dept_id, event_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS track_requirement (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    requirement_id VARCHAR(36) NOT NULL COMMENT '需求业务ID(uuid v4)',
+    title VARCHAR(200) NOT NULL COMMENT '需求标题',
+    status VARCHAR(32) NOT NULL COMMENT '需求状态',
+    priority VARCHAR(8) NOT NULL COMMENT '优先级:P0/P1/P2',
+    business_line_code VARCHAR(64) NOT NULL COMMENT '所属业务线编码',
+    business_line_name VARCHAR(128) NOT NULL COMMENT '所属业务线名称',
+    dev_team_code VARCHAR(64) NOT NULL COMMENT '负责开发团队编码',
+    dev_team_name VARCHAR(128) NOT NULL COMMENT '负责开发团队名称',
+    expected_online_date DATE NOT NULL COMMENT '期望上线日期',
+    description TEXT DEFAULT NULL COMMENT '需求描述(纯文本)',
+    proposer_id BIGINT NOT NULL COMMENT '提出人ID',
+    proposer_name VARCHAR(64) NOT NULL COMMENT '提出人名称',
+    department VARCHAR(128) NOT NULL COMMENT '所属部门名称',
+    create_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    update_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_track_requirement_requirement_id (requirement_id),
+    KEY idx_track_requirement_status (status),
+    KEY idx_track_requirement_priority (priority),
+    KEY idx_track_requirement_proposer (proposer_id),
+    KEY idx_track_requirement_business_line (business_line_code),
+    KEY idx_track_requirement_create_time (create_time),
+    KEY idx_track_requirement_update_time (update_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS track_log (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    log_type VARCHAR(64) NOT NULL COMMENT '日志类型，如 requirement_manage',
+    requirement_id VARCHAR(36) NOT NULL COMMENT '需求业务ID',
+    action_type VARCHAR(32) NOT NULL COMMENT '操作类型:CREATE/STATUS_CHANGE/EDIT_RESUBMIT',
+    from_status VARCHAR(32) DEFAULT NULL COMMENT '变更前状态',
+    to_status VARCHAR(32) DEFAULT NULL COMMENT '变更后状态',
+    opinion VARCHAR(500) DEFAULT NULL COMMENT '操作意见',
+    operator_id BIGINT NOT NULL COMMENT '操作人ID',
+    operator_name VARCHAR(64) NOT NULL COMMENT '操作人名称',
+    operate_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    KEY idx_track_log_type_biz_time (log_type, requirement_id, operate_time),
+    KEY idx_track_log_operator_time (operator_id, operate_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS api_interface (
     id BIGINT NOT NULL AUTO_INCREMENT,
     name VARCHAR(255) NOT NULL,
