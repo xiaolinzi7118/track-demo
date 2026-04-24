@@ -11,7 +11,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Service
 public class RoleService {
@@ -84,13 +87,23 @@ public class RoleService {
             return Result.error("角色不存在");
         }
 
-        roleMenuRepository.deleteByRoleId(roleId);
+        List<Long> distinctMenuIds = menuIds == null
+                ? java.util.Collections.emptyList()
+                : menuIds.stream().filter(Objects::nonNull).distinct().collect(Collectors.toList());
 
-        for (Long menuId : menuIds) {
+        roleMenuRepository.deleteByRoleId(roleId);
+        // Force delete SQL execution before insert SQL in the same transaction.
+        roleMenuRepository.flush();
+
+        List<RoleMenu> roleMenus = new ArrayList<>(distinctMenuIds.size());
+        for (Long menuId : distinctMenuIds) {
             RoleMenu rm = new RoleMenu();
             rm.setRoleId(roleId);
             rm.setMenuId(menuId);
-            roleMenuRepository.save(rm);
+            roleMenus.add(rm);
+        }
+        if (!roleMenus.isEmpty()) {
+            roleMenuRepository.saveAll(roleMenus);
         }
 
         return Result.success();

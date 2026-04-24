@@ -294,11 +294,17 @@ public class UserController {
         if (userService.isBuiltInSuperAdmin(userId)) {
             return;
         }
+        List<Long> normalizedRoleIds = roleIds == null
+                ? new ArrayList<>()
+                : roleIds.stream().filter(Objects::nonNull).distinct().collect(Collectors.toList());
+
         userRoleRepository.deleteByUserId(userId);
-        if (roleIds == null) {
+        // Ensure delete SQL executes before inserts in current transaction.
+        userRoleRepository.flush();
+        if (normalizedRoleIds.isEmpty()) {
             return;
         }
-        for (Long roleId : roleIds.stream().filter(Objects::nonNull).distinct().collect(Collectors.toList())) {
+        for (Long roleId : normalizedRoleIds) {
             UserRole ur = new UserRole();
             ur.setUserId(userId);
             ur.setRoleId(roleId);
