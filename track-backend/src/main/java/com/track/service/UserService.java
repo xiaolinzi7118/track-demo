@@ -1,6 +1,7 @@
 package com.track.service;
 
 import com.track.common.Result;
+import com.track.common.SnowflakeIdGenerator;
 import com.track.entity.User;
 import com.track.repository.UserDataDeptRepository;
 import com.track.repository.UserRepository;
@@ -27,6 +28,9 @@ public class UserService {
 
     @Autowired
     private DataPermissionService dataPermissionService;
+
+    @Autowired
+    private SnowflakeIdGenerator snowflakeIdGenerator;
 
     public User findByUsername(String username) {
         return userRepository.findByUsername(username);
@@ -63,6 +67,9 @@ public class UserService {
 
         user.setCreateTime(LocalDateTime.now());
         user.setUpdateTime(LocalDateTime.now());
+        if (user.getId() == null) {
+            user.setId(snowflakeIdGenerator.nextId());
+        }
         if (user.getStatus() == null) {
             user.setStatus(1);
         }

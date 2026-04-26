@@ -21,6 +21,26 @@ ON DUPLICATE KEY UPDATE
     update_by = VALUES(update_by),
     update_time = VALUES(update_time);
 
+INSERT INTO dict_param (param_id, param_name, is_system, status, create_by, create_time, update_by, update_time)
+VALUES
+    ('DICT2026042200000001', '业务线', 0, 0, 'system', NOW(3), 'system', NOW(3))
+ON DUPLICATE KEY UPDATE
+    param_name = VALUES(param_name),
+    is_system = VALUES(is_system),
+    status = VALUES(status),
+    update_by = VALUES(update_by),
+    update_time = VALUES(update_time);
+
+INSERT INTO dict_param (param_id, param_name, is_system, status, create_by, create_time, update_by, update_time)
+VALUES
+    ('DICT2026042200000002', '开发团队', 0, 0, 'system', NOW(3), 'system', NOW(3))
+ON DUPLICATE KEY UPDATE
+    param_name = VALUES(param_name),
+    is_system = VALUES(is_system),
+    status = VALUES(status),
+    update_by = VALUES(update_by),
+    update_time = VALUES(update_time);
+
 INSERT INTO dict_param_item (param_id, item_code, item_name, status, create_by, create_time, update_by, update_time)
 SELECT 'SYS_DEPT', 'DEFAULT', '默认部门', 0, 'system', NOW(3), 'system', NOW(3)
 WHERE NOT EXISTS (

@@ -8,7 +8,6 @@ import java.util.List;
 @Table(name = "sys_menu")
 public class Menu {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private Long parentId;

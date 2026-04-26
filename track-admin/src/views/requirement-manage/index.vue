@@ -119,9 +119,11 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column prop="priority" label="优先级" width="100" sortable="custom">
+        <el-table-column prop="priority" label="优先级" width="110" sortable="custom">
           <template #default="{ row }">
-            {{ priorityText(row.priority) }}
+            <el-tag :type="priorityTagType(row.priority)">
+              {{ priorityText(row.priority) }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="proposerName" label="需求提出人" width="120" />
@@ -129,12 +131,12 @@
         <el-table-column prop="department" label="所属部门" width="140" />
         <el-table-column prop="createTime" label="创建时间" width="180" sortable="custom">
           <template #default="{ row }">
-            {{ formatTime(row.createTime) }}
+            {{ formatDateTime(row.createTime) }}
           </template>
         </el-table-column>
         <el-table-column prop="updateTime" label="更新时间" width="180" sortable="custom">
           <template #default="{ row }">
-            {{ formatTime(row.updateTime) }}
+            {{ formatDateTime(row.updateTime) }}
           </template>
         </el-table-column>
         <el-table-column label="操作" width="220" fixed="right">
@@ -167,7 +169,7 @@
               v-if="hasEditAction(row)"
               type="primary"
               link
-              @click="openResubmitDialog(row)"
+              @click="openEditTab(row)"
             >
               编辑
             </el-button>
@@ -190,7 +192,7 @@
 
     <el-dialog
       v-model="formDialogVisible"
-      :title="formMode === 'add' ? '新增需求' : '编辑并重新提交'"
+      title="新增需求"
       width="760px"
       destroy-on-close
     >
@@ -261,16 +263,23 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessageBox } from 'element-plus'
 import { useUserStore } from '../../store/user'
 import { getDictParamIdsList } from '../../api/dict-param'
 import {
   addRequirement,
   changeRequirementStatus,
-  getRequirementDetail,
-  getRequirementList,
-  resubmitRequirement
+  getRequirementList
 } from '../../api/requirement'
+import { showActionError, showActionSuccess } from '../../utils/feedback'
+import {
+  formatDateTime,
+  priorityTagType,
+  priorityText,
+  requirementStatusOptions,
+  statusTagType,
+  statusText
+} from './display'
 
 const BUSINESS_LINE_PARAM_ID = 'DICT2026042200000001'
 const DEV_TEAM_PARAM_ID = 'DICT2026042200000002'
@@ -289,21 +298,7 @@ const sortOrder = ref('desc')
 
 const businessLineOptions = ref([])
 const devTeamOptions = ref([])
-
-const statusOptions = [
-  { label: '待审核', value: 'PENDING_REVIEW' },
-  { label: '排期中', value: 'SCHEDULING' },
-  { label: '开发中', value: 'DEVELOPING' },
-  { label: '测试中', value: 'TESTING' },
-  { label: '已上线', value: 'ONLINE' },
-  { label: '已下线', value: 'OFFLINE' },
-  { label: '审核不通过', value: 'REJECTED' }
-]
-
-const statusMap = statusOptions.reduce((acc, item) => {
-  acc[item.value] = item.label
-  return acc
-}, {})
+const statusOptions = requirementStatusOptions
 
 const searchForm = reactive({
   title: '',
@@ -315,12 +310,8 @@ const searchForm = reactive({
 })
 
 const formDialogVisible = ref(false)
-const formMode = ref('add')
 const formRef = ref(null)
-const originalFormSnapshot = ref(null)
-
 const form = reactive({
-  requirementId: '',
   title: '',
   businessLineCode: '',
   priority: '',
@@ -342,44 +333,32 @@ const formRules = reactive({
 
 const canAdd = computed(() => userStore.hasPermission('requirement-manage:add'))
 
-const statusText = (status) => statusMap[status] || status || '-'
-
-const priorityText = (priority) => {
-  if (priority === 'P0') return 'P0(高)'
-  if (priority === 'P1') return 'P1(中)'
-  if (priority === 'P2') return 'P2(低)'
-  return priority || '-'
-}
-
-const statusTagType = (status) => {
-  if (status === 'PENDING_REVIEW') return 'warning'
-  if (status === 'SCHEDULING') return 'info'
-  if (status === 'DEVELOPING') return ''
-  if (status === 'TESTING') return 'success'
-  if (status === 'ONLINE') return 'success'
-  if (status === 'OFFLINE') return 'danger'
-  if (status === 'REJECTED') return 'danger'
-  return 'info'
-}
-
-const formatTime = (time) => {
-  if (!time) return '-'
-  const str = String(time).replace('T', ' ')
-  return str.length > 19 ? str.slice(0, 19) : str
-}
-
 const getStatusActions = (row) => (row.availableActions || []).filter(item => item.actionType === 'CHANGE_STATUS')
-
 const hasEditAction = (row) => (row.availableActions || []).some(item => item.actionType === 'EDIT')
+const findStatusAction = (row, targetStatus) => getStatusActions(row).find(item => item.targetStatus === targetStatus)
 
-const findStatusAction = (row, targetStatus) => {
-  return getStatusActions(row).find(item => item.targetStatus === targetStatus)
+const normalizeFormPayload = (data) => ({
+  title: (data.title || '').trim(),
+  businessLineCode: data.businessLineCode || '',
+  priority: data.priority || '',
+  expectedOnlineDate: data.expectedOnlineDate || '',
+  devTeamCode: data.devTeamCode || '',
+  description: data.description ? data.description.trim() : null
+})
+
+const clearForm = () => {
+  form.title = ''
+  form.businessLineCode = ''
+  form.priority = ''
+  form.expectedOnlineDate = ''
+  form.devTeamCode = ''
+  form.description = ''
 }
 
 const loadDictOptions = async () => {
   const res = await getDictParamIdsList([BUSINESS_LINE_PARAM_ID, DEV_TEAM_PARAM_ID])
   if (res.code !== 200) {
-    ElMessage.error(res.message || '加载字典数据失败')
+    showActionError('加载字典数据失败')
     return
   }
   const dictMap = new Map((res.data || []).map(item => [item.paramId, item]))
@@ -406,11 +385,11 @@ const loadList = async () => {
     if (res.code === 200) {
       tableData.value = res.data.content || []
       total.value = res.data.totalElements || 0
-    } else {
-      ElMessage.error(res.message || '加载列表失败')
+      return
     }
+    showActionError('加载需求列表失败')
   } catch (error) {
-    ElMessage.error('加载列表失败')
+    showActionError('加载需求列表失败')
   } finally {
     loading.value = false
   }
@@ -451,60 +430,27 @@ const handleSortChange = ({ prop, order }) => {
   loadList()
 }
 
-const openDetailTab = (row) => {
+const openRequirementTab = (row, mode) => {
   router.push({
     path: '/requirement-manage/detail',
-    query: { requirementId: row.requirementId }
+    query: {
+      requirementId: row.requirementId,
+      mode
+    }
   })
 }
 
-const clearForm = () => {
-  form.requirementId = ''
-  form.title = ''
-  form.businessLineCode = ''
-  form.priority = ''
-  form.expectedOnlineDate = ''
-  form.devTeamCode = ''
-  form.description = ''
+const openDetailTab = (row) => {
+  openRequirementTab(row, 'detail')
+}
+
+const openEditTab = (row) => {
+  openRequirementTab(row, 'edit')
 }
 
 const handleAdd = () => {
-  formMode.value = 'add'
   clearForm()
-  originalFormSnapshot.value = null
   formDialogVisible.value = true
-}
-
-const normalizeFormPayload = (data) => ({
-  title: (data.title || '').trim(),
-  businessLineCode: data.businessLineCode || '',
-  priority: data.priority || '',
-  expectedOnlineDate: data.expectedOnlineDate || '',
-  devTeamCode: data.devTeamCode || '',
-  description: data.description ? data.description.trim() : null
-})
-
-const openResubmitDialog = async (row) => {
-  try {
-    const res = await getRequirementDetail(row.requirementId)
-    if (res.code !== 200) {
-      ElMessage.error(res.message || '加载详情失败')
-      return
-    }
-    formMode.value = 'resubmit'
-    const detail = res.data
-    form.requirementId = detail.requirementId
-    form.title = detail.title || ''
-    form.businessLineCode = detail.businessLineCode || ''
-    form.priority = detail.priority || ''
-    form.expectedOnlineDate = detail.expectedOnlineDate || ''
-    form.devTeamCode = detail.devTeamCode || ''
-    form.description = detail.description || ''
-    originalFormSnapshot.value = normalizeFormPayload(form)
-    formDialogVisible.value = true
-  } catch (error) {
-    ElMessage.error('加载详情失败')
-  }
 }
 
 const triggerStatusAction = async (row, action) => {
@@ -525,7 +471,7 @@ const triggerStatusAction = async (row, action) => {
       )
       await submitStatusChange(row, action.targetStatus, value)
     } catch (error) {
-      // cancelled
+      // canceled
     }
     return
   }
@@ -538,7 +484,7 @@ const triggerStatusAction = async (row, action) => {
     )
     await submitStatusChange(row, action.targetStatus, null)
   } catch (error) {
-    // cancelled
+    // canceled
   }
 }
 
@@ -554,17 +500,11 @@ const submitStatusChange = async (row, targetStatus, opinion) => {
     opinion
   })
   if (res.code === 200) {
-    ElMessage.success('状态变更成功')
+    showActionSuccess('状态变更成功')
     loadList()
-  } else {
-    ElMessage.error(res.message || '状态变更失败')
+    return
   }
-}
-
-const isFormChanged = () => {
-  if (!originalFormSnapshot.value) return true
-  const current = normalizeFormPayload(form)
-  return JSON.stringify(current) !== JSON.stringify(originalFormSnapshot.value)
+  showActionError('状态变更失败')
 }
 
 const handleSubmitForm = async () => {
@@ -572,33 +512,18 @@ const handleSubmitForm = async () => {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
 
-  const payload = normalizeFormPayload(form)
-  if (formMode.value === 'resubmit' && !isFormChanged()) {
-    ElMessage.warning('至少修改一个字段后才能提交')
-    return
-  }
-
   submitLoading.value = true
   try {
-    let res
-    if (formMode.value === 'add') {
-      res = await addRequirement(payload)
-    } else {
-      res = await resubmitRequirement({
-        requirementId: form.requirementId,
-        ...payload
-      })
-    }
-
+    const res = await addRequirement(normalizeFormPayload(form))
     if (res.code === 200) {
-      ElMessage.success(formMode.value === 'add' ? '新增成功' : '重新提交成功')
+      showActionSuccess('新增需求成功')
       formDialogVisible.value = false
       loadList()
-    } else {
-      ElMessage.error(res.message || '提交失败')
+      return
     }
+    showActionError('新增需求失败')
   } catch (error) {
-    ElMessage.error('提交失败')
+    showActionError('新增需求失败')
   } finally {
     submitLoading.value = false
   }

@@ -69,7 +69,7 @@ const fetchList = async () => {
     if (res.code === 200) {
       tableData.value = res.data || []
     } else {
-      ElMessage.error(res.message || '加载失败')
+      ElMessage.error('加载失败')
     }
   } catch (error) {
     ElMessage.error('加载失败')
@@ -122,7 +122,7 @@ const handleDelete = async (row) => {
       ElMessage.success('删除成功')
       fetchList()
     } else {
-      ElMessage.error(res.message || '删除失败')
+      ElMessage.error('删除失败')
     }
   } catch (error) {
     // cancelled

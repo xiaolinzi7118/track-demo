@@ -1,9 +1,13 @@
 package com.track.service;
 
 import com.track.common.Result;
+import com.track.common.SnowflakeIdGenerator;
+import com.track.dto.RoleMenuItemResponse;
+import com.track.entity.Menu;
 import com.track.entity.Role;
 import com.track.entity.RoleMenu;
 import com.track.entity.UserRole;
+import com.track.repository.MenuRepository;
 import com.track.repository.RoleMenuRepository;
 import com.track.repository.RoleRepository;
 import com.track.repository.UserRoleRepository;
@@ -28,6 +32,12 @@ public class RoleService {
     @Autowired
     private UserRoleRepository userRoleRepository;
 
+    @Autowired
+    private MenuRepository menuRepository;
+
+    @Autowired
+    private SnowflakeIdGenerator snowflakeIdGenerator;
+
     public List<Role> findAll() {
         return roleRepository.findAll();
     }
@@ -39,6 +49,9 @@ public class RoleService {
     public Result<Role> add(Role role) {
         if (roleRepository.findByRoleCode(role.getRoleCode()) != null) {
             return Result.error("角色编码已存在");
+        }
+        if (role.getId() == null) {
+            role.setId(snowflakeIdGenerator.nextId());
         }
         roleRepository.save(role);
         return Result.success(role);
@@ -75,9 +88,23 @@ public class RoleService {
         return Result.success();
     }
 
-    public List<Long> getRoleMenuIds(Long roleId) {
+    public List<RoleMenuItemResponse> getRoleMenus(Long roleId) {
         List<RoleMenu> roleMenus = roleMenuRepository.findByRoleId(roleId);
-        return roleMenus.stream().map(RoleMenu::getMenuId).collect(java.util.stream.Collectors.toList());
+        List<Long> menuIds = roleMenus.stream().map(RoleMenu::getMenuId).collect(Collectors.toList());
+        java.util.Map<Long, Menu> menuMap = menuIds.isEmpty()
+                ? new java.util.HashMap<>()
+                : menuRepository.findAllById(menuIds).stream()
+                .collect(Collectors.toMap(Menu::getId, m -> m, (a, b) -> a));
+
+        List<RoleMenuItemResponse> result = new ArrayList<>();
+        for (Long menuId : menuIds) {
+            Menu menu = menuMap.get(menuId);
+            if (menu == null) {
+                continue;
+            }
+            result.add(new RoleMenuItemResponse(menuId, menu.getMenuCode()));
+        }
+        return result;
     }
 
     @Transactional

@@ -256,7 +256,7 @@ const submitUser = async () => {
     dialogVisible.value = false
     loadUsers()
   } else {
-    ElMessage.error(res.message)
+    ElMessage.error(userForm.id ? '更新用户失败' : '创建用户失败')
   }
 }
 
@@ -272,7 +272,7 @@ const handleDelete = async (row) => {
       ElMessage.success('删除成功')
       loadUsers()
     } else {
-      ElMessage.error(res.message)
+      ElMessage.error('删除用户失败')
     }
   } catch {
     // cancelled
@@ -294,7 +294,7 @@ const handleResetPassword = async (row) => {
       if (res.code === 200) {
         ElMessage.success('密码重置成功')
       } else {
-        ElMessage.error(res.message)
+        ElMessage.error('重置密码失败')
       }
     })
   } catch {

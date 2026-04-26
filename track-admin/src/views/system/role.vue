@@ -126,6 +126,18 @@ const menuCheckedMap = reactive({})
 
 const directories = computed(() => menuTree.value.filter(item => item.menuType === 1 && item.children && item.children.length))
 
+const normalizeCheckedMenuIds = (menuData) => {
+  if (!Array.isArray(menuData)) return []
+  return menuData
+    .map(item => {
+      if (item && typeof item === 'object') {
+        return item.id
+      }
+      return item
+    })
+    .filter(id => id !== null && id !== undefined && id !== '')
+}
+
 const loadRoles = async () => {
   const res = await getRoleList()
   if (res.code === 200) {
@@ -165,7 +177,7 @@ const submitRole = async () => {
     dialogVisible.value = false
     loadRoles()
   } else {
-    ElMessage.error(res.message)
+    ElMessage.error(roleForm.id ? '更新角色失败' : '新增角色失败')
   }
 }
 
@@ -177,7 +189,7 @@ const handleDelete = async (row) => {
       ElMessage.success('删除成功')
       loadRoles()
     } else {
-      ElMessage.error(res.message)
+      ElMessage.error('删除角色失败')
     }
   } catch { /* cancelled */ }
 }
@@ -194,7 +206,7 @@ const loadPermissionData = async () => {
   }
   const menuRes = await getRoleMenus(currentRole.value.id)
   if (menuRes.code === 200) {
-    const checkedIds = menuRes.data || []
+    const checkedIds = normalizeCheckedMenuIds(menuRes.data)
     // 重置
     Object.keys(menuCheckedMap).forEach(k => delete menuCheckedMap[k])
     checkedIds.forEach(id => {
@@ -221,7 +233,7 @@ const submitPermission = async () => {
   const menuIds = []
   Object.keys(menuCheckedMap).forEach(id => {
     if (menuCheckedMap[id]) {
-      menuIds.push(Number(id))
+      menuIds.push(id)
     }
   })
   const res = await updateRoleMenus({
@@ -232,7 +244,7 @@ const submitPermission = async () => {
     ElMessage.success('权限更新成功')
     permDialogVisible.value = false
   } else {
-    ElMessage.error(res.message)
+    ElMessage.error('更新角色权限失败')
   }
 }
 

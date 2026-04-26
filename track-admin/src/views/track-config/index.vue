@@ -337,7 +337,7 @@ const handleDelete = (row) => {
         ElMessage.success('删除成功')
         handleSearch()
       } else {
-        ElMessage.error(res.message || '删除失败')
+        ElMessage.error('删除失败')
       }
     } catch (error) {
       ElMessage.error('删除失败')
@@ -400,7 +400,7 @@ const handleSubmit = async () => {
           dialogVisible.value = false
           handleSearch()
         } else {
-          ElMessage.error(res.message || '操作失败')
+          ElMessage.error('操作失败')
         }
       } catch (error) {
         ElMessage.error('操作失败')

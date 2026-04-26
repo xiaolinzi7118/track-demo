@@ -140,7 +140,7 @@ const loadDetail = async () => {
 
   const res = await getDictParamDetail(id)
   if (res.code !== 200 || !res.data) {
-    ElMessage.error(res.message || '加载失败')
+    ElMessage.error('加载失败')
     router.push('/system/dict-param')
     return
   }
@@ -223,7 +223,7 @@ const handleSave = async () => {
       ElMessage.success('保存成功')
       closeCurrentTab()
     } else {
-      ElMessage.error(res.message || '保存失败')
+      ElMessage.error('保存失败')
     }
   } catch (error) {
     ElMessage.error('保存失败')
