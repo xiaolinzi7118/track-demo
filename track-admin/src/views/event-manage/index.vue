@@ -100,7 +100,7 @@
     <el-dialog
       v-model="dialogVisible"
       :title="isEdit ? '编辑事件' : '新增事件'"
-      width="1180px"
+      width="1300px"
       destroy-on-close
     >
       <el-form
