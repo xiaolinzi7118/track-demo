@@ -39,6 +39,9 @@ public class TrackRequirement {
     private String devTeamName;
 
     @Column(nullable = false)
+    private Long devTeamDeptId;
+
+    @Column(nullable = false)
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate expectedOnlineDate;
 
@@ -137,6 +140,14 @@ public class TrackRequirement {
 
     public void setDevTeamName(String devTeamName) {
         this.devTeamName = devTeamName;
+    }
+
+    public Long getDevTeamDeptId() {
+        return devTeamDeptId;
+    }
+
+    public void setDevTeamDeptId(Long devTeamDeptId) {
+        this.devTeamDeptId = devTeamDeptId;
     }
 
     public LocalDate getExpectedOnlineDate() {

@@ -53,7 +53,7 @@ public class RequirementService {
     private static final DateTimeFormatter REQUIREMENT_ID_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private static final String BUSINESS_LINE_PARAM_ID = "DICT2026042200000001";
-    private static final String DEV_TEAM_PARAM_ID = "DICT2026042200000002";
+    private static final String DEV_DEPT_EXTRA_ATTR = "开发";
 
     private static final Set<String> VALID_PRIORITIES = new HashSet<>(Arrays.asList("P0", "P1", "P2"));
     private static final Set<String> VALID_SORT_FIELDS = new HashSet<>(Arrays.asList("priority", "createTime", "updateTime"));
@@ -155,11 +155,15 @@ public class RequirementService {
             return cb.and(predicates.toArray(new Predicate[0]));
         }, pageable);
 
-        Long currentUserId = permissionChecker.getCurrentUserId();
+        User currentUser = getCurrentUser();
+        Long currentUserId = currentUser == null ? permissionChecker.getCurrentUserId() : currentUser.getId();
+        Long currentUserPrimaryDeptId = currentUser == null ? null : currentUser.getPrimaryDeptId();
         boolean admin = isAdmin();
         boolean developer = !admin && isDeveloper();
         for (TrackRequirement requirement : page.getContent()) {
-            requirement.setAvailableActions(buildAvailableActions(requirement, currentUserId, admin, developer));
+            requirement.setAvailableActions(buildAvailableActions(
+                    requirement, currentUserId, currentUserPrimaryDeptId, admin, developer
+            ));
         }
         return Result.success(page);
     }
@@ -175,10 +179,14 @@ public class RequirementService {
             return Result.error("Requirement does not exist");
         }
 
-        Long currentUserId = permissionChecker.getCurrentUserId();
+        User currentUser = getCurrentUser();
+        Long currentUserId = currentUser == null ? permissionChecker.getCurrentUserId() : currentUser.getId();
+        Long currentUserPrimaryDeptId = currentUser == null ? null : currentUser.getPrimaryDeptId();
         boolean admin = isAdmin();
         boolean developer = !admin && isDeveloper();
-        requirement.setAvailableActions(buildAvailableActions(requirement, currentUserId, admin, developer));
+        requirement.setAvailableActions(buildAvailableActions(
+                requirement, currentUserId, currentUserPrimaryDeptId, admin, developer
+        ));
         requirement.setLogs(trackLogRepository.findByLogTypeAndRequirementIdOrderByOperateTimeDesc(
                 LOG_TYPE_REQUIREMENT_MANAGE, requirement.getRequirementId()));
         return Result.success(requirement);
@@ -214,6 +222,7 @@ public class RequirementService {
         requirement.setBusinessLineName(validation.getBusinessLineName());
         requirement.setDevTeamCode(validation.getDevTeamCode());
         requirement.setDevTeamName(validation.getDevTeamName());
+        requirement.setDevTeamDeptId(validation.getDevTeamDeptId());
         requirement.setExpectedOnlineDate(validation.getExpectedOnlineDate());
         requirement.setDescription(validation.getDescription());
         requirement.setScreenshotFileId(validation.getScreenshotFileId());
@@ -251,10 +260,13 @@ public class RequirementService {
         }
 
         Long currentUserId = currentUser.getId();
+        Long currentUserPrimaryDeptId = currentUser.getPrimaryDeptId();
         boolean admin = isAdmin();
         boolean developer = !admin && isDeveloper();
 
-        List<TrackRequirementAction> availableActions = buildAvailableActions(requirement, currentUserId, admin, developer);
+        List<TrackRequirementAction> availableActions = buildAvailableActions(
+                requirement, currentUserId, currentUserPrimaryDeptId, admin, developer
+        );
         boolean allowed = availableActions.stream()
                 .filter(action -> ACTION_TYPE_CHANGE_STATUS.equals(action.getActionType()))
                 .anyMatch(action -> targetStatus.equals(action.getTargetStatus()));
@@ -274,7 +286,9 @@ public class RequirementService {
 
         writeLog(requirement.getRequirementId(), LOG_ACTION_STATUS_CHANGE, fromStatus, targetStatus, opinion, currentUser, now);
 
-        requirement.setAvailableActions(buildAvailableActions(requirement, currentUserId, admin, developer));
+        requirement.setAvailableActions(buildAvailableActions(
+                requirement, currentUserId, currentUserPrimaryDeptId, admin, developer
+        ));
         return Result.success(requirement);
     }
 
@@ -326,6 +340,7 @@ public class RequirementService {
         requirement.setBusinessLineName(validation.getBusinessLineName());
         requirement.setDevTeamCode(validation.getDevTeamCode());
         requirement.setDevTeamName(validation.getDevTeamName());
+        requirement.setDevTeamDeptId(validation.getDevTeamDeptId());
         requirement.setExpectedOnlineDate(validation.getExpectedOnlineDate());
         requirement.setDescription(validation.getDescription());
         requirement.setScreenshotFileId(validation.getScreenshotFileId());
@@ -336,7 +351,9 @@ public class RequirementService {
         writeLog(requirement.getRequirementId(), LOG_ACTION_EDIT_RESUBMIT, STATUS_REJECTED, STATUS_PENDING_REVIEW, "编辑重新提交", currentUser, now);
 
         boolean developer = !admin && isDeveloper();
-        requirement.setAvailableActions(buildAvailableActions(requirement, currentUser.getId(), admin, developer));
+        requirement.setAvailableActions(buildAvailableActions(
+                requirement, currentUser.getId(), currentUser.getPrimaryDeptId(), admin, developer
+        ));
         return Result.success(requirement);
     }
 
@@ -484,6 +501,7 @@ public class RequirementService {
 
     private List<TrackRequirementAction> buildAvailableActions(TrackRequirement requirement,
                                                                Long currentUserId,
+                                                               Long currentUserPrimaryDeptId,
                                                                boolean admin,
                                                                boolean developer) {
         List<TrackRequirementAction> actions = new ArrayList<>();
@@ -502,7 +520,7 @@ public class RequirementService {
             appendAdminStatusActions(status, actions);
             return actions;
         }
-        if (developer) {
+        if (developer && Objects.equals(currentUserPrimaryDeptId, requirement.getDevTeamDeptId())) {
             appendDeveloperStatusActions(status, actions);
         }
         return actions;
@@ -628,13 +646,14 @@ public class RequirementService {
         }
         context.setBusinessLineName(businessItem.getItemName());
 
-        Map<String, DictParamItem> devTeamMap = loadActiveDictItemMap(DEV_TEAM_PARAM_ID);
+        Map<String, DictParamItem> devTeamMap = loadActiveDevTeamDeptMap();
         DictParamItem devTeamItem = devTeamMap.get(context.getDevTeamCode());
         if (devTeamItem == null) {
             context.setErrorMessage("Dev team is invalid");
             return context;
         }
         context.setDevTeamName(devTeamItem.getItemName());
+        context.setDevTeamDeptId(devTeamItem.getId());
 
         if (context.getScreenshotFileId() != null
                 && !trackFileAssetRepository.existsByFileId(context.getScreenshotFileId())) {
@@ -655,12 +674,26 @@ public class RequirementService {
         return map;
     }
 
+    private Map<String, DictParamItem> loadActiveDevTeamDeptMap() {
+        List<DictParamItem> items = dictParamItemRepository.findByParamIdAndStatusAndExtraAttrOrderByIdAsc(
+                DataPermissionService.DEPT_PARAM_ID, 0, DEV_DEPT_EXTRA_ATTR
+        );
+        Map<String, DictParamItem> map = new LinkedHashMap<>();
+        for (DictParamItem item : items) {
+            if (item.getItemCode() != null) {
+                map.put(item.getItemCode(), item);
+            }
+        }
+        return map;
+    }
+
     private boolean isResubmitChanged(TrackRequirement requirement, ValidationContext validation) {
         return !Objects.equals(requirement.getTitle(), validation.getTitle())
                 || !Objects.equals(requirement.getBusinessLineCode(), validation.getBusinessLineCode())
                 || !Objects.equals(requirement.getPriority(), validation.getPriority())
                 || !Objects.equals(requirement.getExpectedOnlineDate(), validation.getExpectedOnlineDate())
                 || !Objects.equals(requirement.getDevTeamCode(), validation.getDevTeamCode())
+                || !Objects.equals(requirement.getDevTeamDeptId(), validation.getDevTeamDeptId())
                 || !Objects.equals(normalizeNullable(requirement.getDescription()), validation.getDescription())
                 || !Objects.equals(normalizeNullable(requirement.getScreenshotFileId()), validation.getScreenshotFileId());
     }
@@ -763,6 +796,7 @@ public class RequirementService {
         private java.time.LocalDate expectedOnlineDate;
         private String devTeamCode;
         private String devTeamName;
+        private Long devTeamDeptId;
         private String description;
         private String screenshotFileId;
         private String errorMessage;
@@ -821,6 +855,14 @@ public class RequirementService {
 
         public void setDevTeamName(String devTeamName) {
             this.devTeamName = devTeamName;
+        }
+
+        public Long getDevTeamDeptId() {
+            return devTeamDeptId;
+        }
+
+        public void setDevTeamDeptId(Long devTeamDeptId) {
+            this.devTeamDeptId = devTeamDeptId;
         }
 
         public String getDescription() {

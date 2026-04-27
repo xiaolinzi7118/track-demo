@@ -108,7 +108,7 @@
         <el-form-item label="主部门">
           <el-select v-model="userForm.primaryDeptId" placeholder="请选择主部门" style="width: 100%">
             <el-option
-              v-for="dept in deptOptions"
+              v-for="dept in primaryDeptOptions"
               :key="dept.id"
               :label="dept.itemName"
               :value="dept.id"
@@ -147,7 +147,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import { getUserList, addUser, updateUser, deleteUser, updatePassword } from '../../api/system'
@@ -174,6 +174,9 @@ const userForm = reactive({
   status: 1
 })
 
+const DEV_ROLE_CODE = 'developer'
+const DEV_DEPT_EXTRA_ATTR = '开发'
+
 const buildFormDefaults = () => ({
   id: null,
   username: '',
@@ -183,6 +186,21 @@ const buildFormDefaults = () => ({
   primaryDeptId: null,
   dataDeptIds: [],
   status: 1
+})
+
+const isDeveloperRoleSelected = computed(() => {
+  const selectedRoleIds = new Set((userForm.roleIds || []).filter(Boolean))
+  return (roleList.value || []).some(role => {
+    if (!selectedRoleIds.has(role.id)) return false
+    return String(role.roleCode || '').toLowerCase() === DEV_ROLE_CODE
+  })
+})
+
+const primaryDeptOptions = computed(() => {
+  if (!isDeveloperRoleSelected.value) {
+    return deptOptions.value
+  }
+  return (deptOptions.value || []).filter(dept => dept.extraAttr === DEV_DEPT_EXTRA_ATTR)
 })
 
 const loadUsers = async () => {
@@ -359,6 +377,18 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
 }
+
+watch(
+  () => [userForm.roleIds, deptOptions.value],
+  () => {
+    if (!userForm.primaryDeptId) return
+    const exists = primaryDeptOptions.value.some(dept => dept.id === userForm.primaryDeptId)
+    if (!exists) {
+      userForm.primaryDeptId = null
+    }
+  },
+  { deep: true }
+)
 
 .pagination {
   display: flex;

@@ -45,6 +45,16 @@
                   />
                 </template>
               </el-table-column>
+              <el-table-column label="附加属性" min-width="180">
+                <template #default="{ row }">
+                  <el-input
+                    v-model="row.extraAttr"
+                    :disabled="isViewMode"
+                    maxlength="64"
+                    placeholder="请输入附加属性"
+                  />
+                </template>
+              </el-table-column>
               <el-table-column v-if="!isViewMode" label="操作" width="100" fixed="right">
                 <template #default="{ row, $index }">
                   <el-button
@@ -152,6 +162,7 @@ const loadDetail = async () => {
     id: item.id,
     itemCode: item.itemCode,
     itemName: item.itemName,
+    extraAttr: item.extraAttr || '',
     status: item.status
   }))
 
@@ -163,6 +174,7 @@ const addItem = () => {
     id: null,
     itemCode: '',
     itemName: '',
+    extraAttr: '',
     status: 0
   })
 }
@@ -212,7 +224,8 @@ const handleSave = async () => {
     items: itemList.value.map(item => ({
       id: item.id,
       itemCode: (item.itemCode || '').trim(),
-      itemName: (item.itemName || '').trim()
+      itemName: (item.itemName || '').trim(),
+      extraAttr: item.extraAttr ? item.extraAttr.trim() : null
     })),
     deletedItemIds: [...new Set(deletedItemIds.value)]
   }

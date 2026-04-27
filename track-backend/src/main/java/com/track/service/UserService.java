@@ -91,9 +91,12 @@ public class UserService {
             user.setIsBuiltinSuperAdmin(0);
         }
 
-        Long primaryDeptId = dataPermissionService.resolvePrimaryDeptId(user.getPrimaryDeptId());
+        if (user.getPrimaryDeptId() == null) {
+            return Result.error("Primary department is required");
+        }
+        Long primaryDeptId = dataPermissionService.validatePrimaryDeptId(user.getPrimaryDeptId());
         if (primaryDeptId == null) {
-            return Result.error("No valid primary department found");
+            return Result.error("Primary department is invalid");
         }
         user.setPrimaryDeptId(primaryDeptId);
 
@@ -121,17 +124,13 @@ public class UserService {
         existing.setStatus(user.getStatus());
 
         if (user.getPrimaryDeptId() != null) {
-            Long primaryDeptId = dataPermissionService.resolvePrimaryDeptId(user.getPrimaryDeptId());
+            Long primaryDeptId = dataPermissionService.validatePrimaryDeptId(user.getPrimaryDeptId());
             if (primaryDeptId == null) {
-                return Result.error("No valid primary department found");
+                return Result.error("Primary department is invalid");
             }
             existing.setPrimaryDeptId(primaryDeptId);
         } else if (existing.getPrimaryDeptId() == null) {
-            Long defaultDeptId = dataPermissionService.getDefaultDeptId();
-            if (defaultDeptId == null) {
-                return Result.error("No valid primary department found");
-            }
-            existing.setPrimaryDeptId(defaultDeptId);
+            return Result.error("Primary department is required");
         }
 
         existing.setUpdateTime(LocalDateTime.now());

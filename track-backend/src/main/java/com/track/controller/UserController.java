@@ -26,6 +26,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/user")
 public class UserController {
+    private static final String DEV_ROLE_CODE = "developer";
+    private static final String DEV_DEPT_EXTRA_ATTR = "开发";
 
     @Autowired
     private UserService userService;
@@ -77,11 +79,23 @@ public class UserController {
     public Result<User> add(@RequestBody Map<String, Object> request) {
         permissionChecker.checkPermission("system-user:add");
 
+        List<Long> roleIds = parseRoleIds(request);
+        Result<Void> roleCheck = validateRoleIds(roleIds);
+        if (roleCheck.getCode() != 200) {
+            return Result.error(roleCheck.getMessage());
+        }
+
+        Long primaryDeptId = parseLong(request.get("primaryDeptId"));
+        Result<Void> deptCheck = validateDeveloperPrimaryDept(roleIds, primaryDeptId);
+        if (deptCheck.getCode() != 200) {
+            return Result.error(deptCheck.getMessage());
+        }
+
         User user = new User();
         user.setUsername((String) request.get("username"));
         user.setPassword((String) request.get("password"));
         user.setNickname((String) request.get("nickname"));
-        user.setPrimaryDeptId(parseLong(request.get("primaryDeptId")));
+        user.setPrimaryDeptId(primaryDeptId);
         user.setStatus(request.get("status") != null ? Integer.valueOf(request.get("status").toString()) : 1);
 
         Result<User> result = userService.addUser(user);
@@ -90,11 +104,6 @@ public class UserController {
         }
 
         Long userId = result.getData().getId();
-        List<Long> roleIds = parseRoleIds(request);
-        Result<Void> roleCheck = validateRoleIds(roleIds);
-        if (roleCheck.getCode() != 200) {
-            return Result.error(roleCheck.getMessage());
-        }
         saveUserRoles(userId, roleIds);
 
         List<Long> requestDataDeptIds = parseLongList(request.get("dataDeptIds"));
@@ -120,10 +129,32 @@ public class UserController {
             return Result.error("Built-in super admin cannot be updated");
         }
 
+        boolean roleInputProvided = request.containsKey("roleIds") || request.containsKey("roleId");
+        List<Long> targetRoleIds;
+        if (roleInputProvided) {
+            targetRoleIds = parseRoleIds(request);
+            Result<Void> roleCheck = validateRoleIds(targetRoleIds);
+            if (roleCheck.getCode() != 200) {
+                return Result.error(roleCheck.getMessage());
+            }
+        } else {
+            targetRoleIds = userRoleRepository.findByUserId(id).stream()
+                    .map(UserRole::getRoleId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+        }
+
+        Long requestedPrimaryDeptId = parseLong(request.get("primaryDeptId"));
+        Long targetPrimaryDeptId = request.containsKey("primaryDeptId") ? requestedPrimaryDeptId : existing.getPrimaryDeptId();
+        Result<Void> deptCheck = validateDeveloperPrimaryDept(targetRoleIds, targetPrimaryDeptId);
+        if (deptCheck.getCode() != 200) {
+            return Result.error(deptCheck.getMessage());
+        }
+
         User user = new User();
         user.setId(id);
         user.setNickname((String) request.get("nickname"));
-        user.setPrimaryDeptId(parseLong(request.get("primaryDeptId")));
+        user.setPrimaryDeptId(requestedPrimaryDeptId);
         user.setStatus(request.get("status") != null ? Integer.valueOf(request.get("status").toString()) : 1);
 
         Result<User> result = userService.updateUser(user);
@@ -131,13 +162,8 @@ public class UserController {
             return result;
         }
 
-        if (request.containsKey("roleIds") || request.containsKey("roleId")) {
-            List<Long> roleIds = parseRoleIds(request);
-            Result<Void> roleCheck = validateRoleIds(roleIds);
-            if (roleCheck.getCode() != 200) {
-                return Result.error(roleCheck.getMessage());
-            }
-            saveUserRoles(id, roleIds);
+        if (roleInputProvided) {
+            saveUserRoles(id, targetRoleIds);
         }
 
         if (request.containsKey("dataDeptIds") || request.containsKey("primaryDeptId")) {
@@ -283,6 +309,48 @@ public class UserController {
             }
         }
         return Result.success();
+    }
+
+    private Result<Void> validateDeveloperPrimaryDept(List<Long> roleIds, Long primaryDeptId) {
+        if (!containsDeveloperRole(roleIds)) {
+            return Result.success();
+        }
+        if (primaryDeptId == null) {
+            return Result.error("开发人员角色必须选择主部门");
+        }
+        if (!isDevDept(primaryDeptId)) {
+            return Result.error("开发人员角色的主部门必须是附加属性为“开发”的部门");
+        }
+        return Result.success();
+    }
+
+    private boolean containsDeveloperRole(List<Long> roleIds) {
+        if (roleIds == null || roleIds.isEmpty()) {
+            return false;
+        }
+        Set<Long> roleIdSet = roleIds.stream().filter(Objects::nonNull).collect(Collectors.toSet());
+        if (roleIdSet.isEmpty()) {
+            return false;
+        }
+        return roleRepository.findAllById(roleIdSet).stream()
+                .map(Role::getRoleCode)
+                .filter(Objects::nonNull)
+                .anyMatch(code -> DEV_ROLE_CODE.equalsIgnoreCase(code.trim()));
+    }
+
+    private boolean isDevDept(Long deptId) {
+        DictParamItem dept = dictParamItemRepository.findById(deptId).orElse(null);
+        if (dept == null) {
+            return false;
+        }
+        if (!DataPermissionService.DEPT_PARAM_ID.equals(dept.getParamId())) {
+            return false;
+        }
+        if (dept.getStatus() == null || dept.getStatus() != 0) {
+            return false;
+        }
+        String extraAttr = dept.getExtraAttr() == null ? null : dept.getExtraAttr().trim();
+        return DEV_DEPT_EXTRA_ATTR.equals(extraAttr);
     }
 
     private void saveUserRoles(Long userId, List<Long> roleIds) {

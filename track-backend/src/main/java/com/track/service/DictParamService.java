@@ -231,11 +231,13 @@ public class DictParamService {
         for (DictParamItem item : items) {
             String itemCode = trim(item.getItemCode());
             String itemName = trim(item.getItemName());
+            String extraAttr = trim(item.getExtraAttr());
             if (item.getId() == null) {
                 DictParamItem entity = new DictParamItem();
                 entity.setParamId(paramId);
                 entity.setItemCode(itemCode);
                 entity.setItemName(itemName);
+                entity.setExtraAttr(extraAttr);
                 entity.setStatus(0);
                 entity.setCreateBy(username);
                 entity.setUpdateBy(username);
@@ -251,6 +253,7 @@ public class DictParamService {
             }
             existing.setItemCode(itemCode);
             existing.setItemName(itemName);
+            existing.setExtraAttr(extraAttr);
             existing.setUpdateBy(username);
             existing.setUpdateTime(now);
             dictParamItemRepository.save(existing);

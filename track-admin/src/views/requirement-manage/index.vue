@@ -294,7 +294,8 @@ import {
 } from './display'
 
 const BUSINESS_LINE_PARAM_ID = 'DICT2026042200000001'
-const DEV_TEAM_PARAM_ID = 'DICT2026042200000002'
+const DEPT_PARAM_ID = 'SYS_DEPT'
+const DEV_TEAM_EXTRA_ATTR = '开发'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -371,14 +372,15 @@ const clearForm = () => {
 }
 
 const loadDictOptions = async () => {
-  const res = await getDictParamIdsList([BUSINESS_LINE_PARAM_ID, DEV_TEAM_PARAM_ID])
+  const res = await getDictParamIdsList([BUSINESS_LINE_PARAM_ID, DEPT_PARAM_ID])
   if (res.code !== 200) {
     showActionError('加载字典数据失败')
     return
   }
   const dictMap = new Map((res.data || []).map(item => [item.paramId, item]))
   businessLineOptions.value = ((dictMap.get(BUSINESS_LINE_PARAM_ID) || {}).items || []).filter(item => item.status === 0)
-  devTeamOptions.value = ((dictMap.get(DEV_TEAM_PARAM_ID) || {}).items || []).filter(item => item.status === 0)
+  devTeamOptions.value = ((dictMap.get(DEPT_PARAM_ID) || {}).items || [])
+    .filter(item => item.status === 0 && item.extraAttr === DEV_TEAM_EXTRA_ATTR)
 }
 
 const loadList = async () => {

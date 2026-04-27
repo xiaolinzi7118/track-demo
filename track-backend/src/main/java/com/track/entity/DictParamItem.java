@@ -19,6 +19,8 @@ public class DictParamItem {
     @Column(nullable = false)
     private String itemName;
 
+    private String extraAttr;
+
     @Column(nullable = false)
     private Integer status;
 
@@ -60,6 +62,14 @@ public class DictParamItem {
 
     public void setItemName(String itemName) {
         this.itemName = itemName;
+    }
+
+    public String getExtraAttr() {
+        return extraAttr;
+    }
+
+    public void setExtraAttr(String extraAttr) {
+        this.extraAttr = extraAttr;
     }
 
     public Integer getStatus() {

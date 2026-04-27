@@ -31,29 +31,9 @@ ON DUPLICATE KEY UPDATE
     update_by = VALUES(update_by),
     update_time = VALUES(update_time);
 
-INSERT INTO dict_param (param_id, param_name, is_system, status, create_by, create_time, update_by, update_time)
-VALUES
-    ('DICT2026042200000002', '开发团队', 0, 0, 'system', NOW(3), 'system', NOW(3))
-ON DUPLICATE KEY UPDATE
-    param_name = VALUES(param_name),
-    is_system = VALUES(is_system),
-    status = VALUES(status),
-    update_by = VALUES(update_by),
-    update_time = VALUES(update_time);
-
-INSERT INTO dict_param_item (param_id, item_code, item_name, status, create_by, create_time, update_by, update_time)
-SELECT 'SYS_DEPT', 'DEFAULT', '默认部门', 0, 'system', NOW(3), 'system', NOW(3)
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM dict_param_item
-    WHERE param_id = 'SYS_DEPT' AND item_code = 'DEFAULT' AND status = 0
-);
-
 INSERT INTO sys_user (id, username, password, nickname, avatar, primary_dept_id, status, is_builtin_super_admin, create_time, update_time)
 VALUES
-    (1, 'admin', '123456', '管理员', NULL,
-        (SELECT id FROM dict_param_item WHERE param_id = 'SYS_DEPT' AND item_code = 'DEFAULT' AND status = 0 ORDER BY id ASC LIMIT 1),
-        1, 1, NOW(3), NOW(3))
+    (1, 'admin', '123456', '管理员', NULL, NULL, 1, 1, NOW(3), NOW(3))
 ON DUPLICATE KEY UPDATE
     password = VALUES(password),
     nickname = VALUES(nickname),

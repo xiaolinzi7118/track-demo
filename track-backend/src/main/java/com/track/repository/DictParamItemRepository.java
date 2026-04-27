@@ -21,5 +21,9 @@ public interface DictParamItemRepository extends JpaRepository<DictParamItem, Lo
 
     List<DictParamItem> findByIdInAndParamIdAndStatus(List<Long> ids, String paramId, Integer status);
 
+    List<DictParamItem> findByParamIdAndStatusAndExtraAttrOrderByIdAsc(String paramId, Integer status, String extraAttr);
+
+    Optional<DictParamItem> findFirstByParamIdAndStatusOrderByIdAsc(String paramId, Integer status);
+
     Optional<DictParamItem> findFirstByParamIdAndItemCodeAndStatusOrderByIdAsc(String paramId, String itemCode, Integer status);
 }

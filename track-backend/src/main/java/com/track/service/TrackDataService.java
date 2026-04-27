@@ -29,7 +29,7 @@ public class TrackDataService {
 
     public Result<Void> report(TrackData data) {
         if (data.getDeptId() == null) {
-            data.setDeptId(dataPermissionService.getDefaultDeptId());
+            data.setDeptId(dataPermissionService.getFirstActiveDeptId());
         }
         data.setCreateTime(LocalDateTime.now());
         trackDataRepository.save(data);
@@ -37,7 +37,7 @@ public class TrackDataService {
     }
 
     public Result<Void> batchReport(List<TrackData> dataList) {
-        Long defaultDeptId = dataPermissionService.getDefaultDeptId();
+        Long defaultDeptId = dataPermissionService.getFirstActiveDeptId();
         for (TrackData data : dataList) {
             if (data.getDeptId() == null) {
                 data.setDeptId(defaultDeptId);

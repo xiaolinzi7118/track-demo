@@ -160,6 +160,7 @@ CREATE TABLE IF NOT EXISTS track_requirement (
     business_line_name VARCHAR(128) NOT NULL COMMENT '所属业务线名称',
     dev_team_code VARCHAR(64) NOT NULL COMMENT '负责开发团队编码',
     dev_team_name VARCHAR(128) NOT NULL COMMENT '负责开发团队名称',
+    dev_team_dept_id BIGINT NOT NULL COMMENT '负责开发团队部门ID(dict_param_item.id)',
     expected_online_date DATE NOT NULL COMMENT '期望上线日期',
     description TEXT DEFAULT NULL COMMENT '需求描述(纯文本)',
     screenshot_file_id VARCHAR(36) DEFAULT NULL COMMENT '需求截图文件ID(track_file_asset.file_id)',
@@ -174,6 +175,7 @@ CREATE TABLE IF NOT EXISTS track_requirement (
     KEY idx_track_requirement_priority (priority),
     KEY idx_track_requirement_proposer (proposer_id),
     KEY idx_track_requirement_business_line (business_line_code),
+    KEY idx_track_requirement_dev_team_dept (dev_team_dept_id),
     KEY idx_track_requirement_screenshot (screenshot_file_id),
     KEY idx_track_requirement_create_time (create_time),
     KEY idx_track_requirement_update_time (update_time)
@@ -231,6 +233,7 @@ CREATE TABLE IF NOT EXISTS dict_param_item (
     param_id VARCHAR(32) NOT NULL,
     item_code VARCHAR(100) NOT NULL,
     item_name VARCHAR(100) NOT NULL,
+    extra_attr VARCHAR(64) DEFAULT NULL COMMENT '附加属性',
     status TINYINT NOT NULL DEFAULT 0 COMMENT '0-active, 1-deleted',
     create_by VARCHAR(64) DEFAULT NULL,
     create_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),

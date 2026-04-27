@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 public class DataPermissionService {
 
     public static final String DEPT_PARAM_ID = "SYS_DEPT";
-    public static final String DEFAULT_DEPT_CODE = "DEFAULT";
 
     @Autowired
     private UserRepository userRepository;
@@ -86,21 +85,27 @@ public class DataPermissionService {
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    public Long getDefaultDeptId() {
+    public Long getFirstActiveDeptId() {
         DictParamItem dept = dictParamItemRepository
-                .findFirstByParamIdAndItemCodeAndStatusOrderByIdAsc(DEPT_PARAM_ID, DEFAULT_DEPT_CODE, 0)
+                .findFirstByParamIdAndStatusOrderByIdAsc(DEPT_PARAM_ID, 0)
                 .orElse(null);
         return dept == null ? null : dept.getId();
     }
 
-    public Long resolvePrimaryDeptId(Long requestPrimaryDeptId) {
-        if (requestPrimaryDeptId != null) {
-            Set<Long> valid = normalizeDeptIds(Collections.singleton(requestPrimaryDeptId));
-            if (!valid.isEmpty()) {
-                return requestPrimaryDeptId;
-            }
+    public Long validatePrimaryDeptId(Long requestPrimaryDeptId) {
+        if (requestPrimaryDeptId == null) {
+            return null;
         }
-        return getDefaultDeptId();
+        Set<Long> valid = normalizeDeptIds(Collections.singleton(requestPrimaryDeptId));
+        return valid.isEmpty() ? null : requestPrimaryDeptId;
+    }
+
+    public Long resolvePrimaryDeptId(Long requestPrimaryDeptId) {
+        Long validated = validatePrimaryDeptId(requestPrimaryDeptId);
+        if (validated != null) {
+            return validated;
+        }
+        return getFirstActiveDeptId();
     }
 
     public static class DataScope {
