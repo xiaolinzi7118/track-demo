@@ -8,6 +8,21 @@ export function getRequirementList(params) {
   })
 }
 
+export function getRequirementDashboardStatistics() {
+  return request({
+    url: '/requirement/dashboard-statistics',
+    method: 'get'
+  })
+}
+
+export function getRequirementDashboardTrend(days = 7) {
+  return request({
+    url: '/requirement/dashboard-trend',
+    method: 'get',
+    params: { days }
+  })
+}
+
 export function getRequirementDetail(requirementId) {
   return request({
     url: '/requirement/detail',
@@ -39,4 +54,3 @@ export function resubmitRequirement(data) {
     data
   })
 }
-

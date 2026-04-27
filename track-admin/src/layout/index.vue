@@ -243,6 +243,7 @@ onMounted(() => {
   border-top: 1px solid #e54165;
   border-bottom: 1px solid #ebeef5;
   overflow-x: auto;
+  flex-shrink: 0;
 }
 
 .nav-tag {

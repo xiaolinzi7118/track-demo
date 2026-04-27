@@ -11,6 +11,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/requirement")
 public class RequirementController {
@@ -38,6 +41,18 @@ public class RequirementController {
                 sortField, sortOrder, pageNum, pageSize);
     }
 
+    @GetMapping("/dashboard-statistics")
+    public Result<Map<String, Object>> dashboardStatistics() {
+        permissionChecker.checkPermission("requirement-manage:view");
+        return requirementService.dashboardStatistics();
+    }
+
+    @GetMapping("/dashboard-trend")
+    public Result<List<Map<String, Object>>> dashboardTrend(@RequestParam(defaultValue = "7") Integer days) {
+        permissionChecker.checkPermission("requirement-manage:view");
+        return requirementService.dashboardTrend(days);
+    }
+
     @GetMapping("/detail")
     public Result<TrackRequirement> detail(@RequestParam String requirementId) {
         permissionChecker.checkPermission("requirement-manage:view");
@@ -62,4 +77,3 @@ public class RequirementController {
         return requirementService.resubmit(request);
     }
 }
-

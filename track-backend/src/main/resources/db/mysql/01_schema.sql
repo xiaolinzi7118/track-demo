@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS track_file_asset (
 
 CREATE TABLE IF NOT EXISTS track_requirement (
     id BIGINT NOT NULL AUTO_INCREMENT,
-    requirement_id VARCHAR(36) NOT NULL COMMENT '需求业务ID(uuid v4)',
+    requirement_id VARCHAR(36) NOT NULL COMMENT '需求业务ID(yyyyMMdd-序号)',
     title VARCHAR(200) NOT NULL COMMENT '需求标题',
     status VARCHAR(32) NOT NULL COMMENT '需求状态',
     priority VARCHAR(8) NOT NULL COMMENT '优先级:P0/P1/P2',

@@ -6,10 +6,12 @@ import com.track.dto.RequirementCreateRequest;
 import com.track.dto.RequirementResubmitRequest;
 import com.track.dto.RequirementStatusChangeRequest;
 import com.track.entity.DictParamItem;
+import com.track.entity.DictIdSequence;
 import com.track.entity.TrackLog;
 import com.track.entity.TrackRequirement;
 import com.track.entity.TrackRequirementAction;
 import com.track.entity.User;
+import com.track.repository.DictIdSequenceRepository;
 import com.track.repository.DictParamItemRepository;
 import com.track.repository.TrackLogRepository;
 import com.track.repository.TrackFileAssetRepository;
@@ -20,10 +22,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import javax.persistence.criteria.Expression;
 import javax.persistence.criteria.Predicate;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -44,12 +49,20 @@ public class RequirementService {
 
     private static final String ACTION_TYPE_CHANGE_STATUS = "CHANGE_STATUS";
     private static final String ACTION_TYPE_EDIT = "EDIT";
+    private static final String REQUIREMENT_ID_SEQUENCE_PREFIX = "REQ";
+    private static final DateTimeFormatter REQUIREMENT_ID_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private static final String BUSINESS_LINE_PARAM_ID = "DICT2026042200000001";
     private static final String DEV_TEAM_PARAM_ID = "DICT2026042200000002";
 
     private static final Set<String> VALID_PRIORITIES = new HashSet<>(Arrays.asList("P0", "P1", "P2"));
     private static final Set<String> VALID_SORT_FIELDS = new HashSet<>(Arrays.asList("priority", "createTime", "updateTime"));
+    private static final Set<String> WAIT_DEVELOP_STATUSES = new HashSet<>(Arrays.asList(
+            STATUS_PENDING_REVIEW, STATUS_SCHEDULING
+    ));
+    private static final Set<String> ALERT_EXCLUDED_STATUSES = new HashSet<>(Arrays.asList(
+            STATUS_REJECTED, STATUS_OFFLINE
+    ));
 
     private static final Map<String, String> STATUS_NAME_MAP = new LinkedHashMap<>();
 
@@ -65,6 +78,9 @@ public class RequirementService {
 
     @Autowired
     private TrackRequirementRepository trackRequirementRepository;
+
+    @Autowired
+    private DictIdSequenceRepository dictIdSequenceRepository;
 
     @Autowired
     private TrackLogRepository trackLogRepository;
@@ -168,6 +184,7 @@ public class RequirementService {
         return Result.success(requirement);
     }
 
+    @Transactional
     public Result<TrackRequirement> add(RequirementCreateRequest request) {
         User currentUser = getCurrentUser();
         if (currentUser == null) {
@@ -189,7 +206,7 @@ public class RequirementService {
 
         LocalDateTime now = LocalDateTime.now();
         TrackRequirement requirement = new TrackRequirement();
-        requirement.setRequirementId(UUID.randomUUID().toString());
+        requirement.setRequirementId(generateRequirementId(now));
         requirement.setTitle(validation.getTitle());
         requirement.setStatus(STATUS_PENDING_REVIEW);
         requirement.setPriority(validation.getPriority());
@@ -321,6 +338,96 @@ public class RequirementService {
         boolean developer = !admin && isDeveloper();
         requirement.setAvailableActions(buildAvailableActions(requirement, currentUser.getId(), admin, developer));
         return Result.success(requirement);
+    }
+
+    public Result<Map<String, Object>> dashboardStatistics() {
+        LocalDate today = LocalDate.now();
+
+        LocalDate weekStart = today.minusDays(today.getDayOfWeek().getValue() - 1L);
+        LocalDateTime weekStartTime = weekStart.atStartOfDay();
+        LocalDateTime weekEndTime = weekStart.plusDays(7).atStartOfDay();
+        long weekSubmitCount = trackRequirementRepository.countByCreateTimeGreaterThanEqualAndCreateTimeLessThan(
+                weekStartTime, weekEndTime
+        );
+
+        long waitDevelopCount = trackRequirementRepository.countByStatusIn(WAIT_DEVELOP_STATUSES);
+
+        LocalDate monthStart = today.withDayOfMonth(1);
+        LocalDateTime monthStartTime = monthStart.atStartOfDay();
+        LocalDateTime nextMonthStartTime = monthStart.plusMonths(1).atStartOfDay();
+        List<TrackLog> monthOnlineLogs = trackLogRepository
+                .findByLogTypeAndToStatusAndOperateTimeGreaterThanEqualAndOperateTimeLessThan(
+                        LOG_TYPE_REQUIREMENT_MANAGE, STATUS_ONLINE, monthStartTime, nextMonthStartTime
+                );
+        long monthOnlineCount = monthOnlineLogs.stream()
+                .map(TrackLog::getRequirementId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .count();
+
+        LocalDate alertDeadline = today.plusDays(3);
+        long alertCount = trackRequirementRepository.countAlertRequirements(
+                ALERT_EXCLUDED_STATUSES,
+                STATUS_ONLINE,
+                alertDeadline
+        );
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("weekSubmitCount", weekSubmitCount);
+        result.put("waitDevelopCount", waitDevelopCount);
+        result.put("monthOnlineCount", monthOnlineCount);
+        result.put("alertCount", alertCount);
+        return Result.success(result);
+    }
+
+    public Result<List<Map<String, Object>>> dashboardTrend(Integer days) {
+        int rangeDays = (days != null && days == 30) ? 30 : 7;
+        LocalDate endDate = LocalDate.now();
+        LocalDate startDate = endDate.minusDays(rangeDays - 1L);
+
+        LocalDateTime startTime = startDate.atStartOfDay();
+        LocalDateTime endTime = endDate.plusDays(1).atStartOfDay();
+
+        Map<String, Map<String, Object>> trendMap = new LinkedHashMap<>();
+        for (int i = 0; i < rangeDays; i++) {
+            LocalDate date = startDate.plusDays(i);
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("date", date.toString());
+            item.put("newCount", 0L);
+            item.put("onlineCount", 0L);
+            trendMap.put(date.toString(), item);
+        }
+
+        List<TrackRequirement> newRequirements = trackRequirementRepository
+                .findByCreateTimeGreaterThanEqualAndCreateTimeLessThan(startTime, endTime);
+        for (TrackRequirement requirement : newRequirements) {
+            if (requirement.getCreateTime() == null) {
+                continue;
+            }
+            String dateKey = requirement.getCreateTime().toLocalDate().toString();
+            Map<String, Object> item = trendMap.get(dateKey);
+            if (item != null) {
+                long count = ((Number) item.get("newCount")).longValue() + 1L;
+                item.put("newCount", count);
+            }
+        }
+
+        List<TrackLog> onlineLogs = trackLogRepository.findByLogTypeAndToStatusAndOperateTimeGreaterThanEqualAndOperateTimeLessThan(
+                LOG_TYPE_REQUIREMENT_MANAGE, STATUS_ONLINE, startTime, endTime
+        );
+        for (TrackLog log : onlineLogs) {
+            if (log.getOperateTime() == null) {
+                continue;
+            }
+            String dateKey = log.getOperateTime().toLocalDate().toString();
+            Map<String, Object> item = trendMap.get(dateKey);
+            if (item != null) {
+                long count = ((Number) item.get("onlineCount")).longValue() + 1L;
+                item.put("onlineCount", count);
+            }
+        }
+
+        return Result.success(new ArrayList<>(trendMap.values()));
     }
 
     private void applySort(javax.persistence.criteria.Root<TrackRequirement> root,
@@ -628,6 +735,24 @@ public class RequirementService {
         }
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String generateRequirementId(LocalDateTime now) {
+        String bizDate = now.format(REQUIREMENT_ID_DATE_FORMATTER);
+        String sequenceKey = REQUIREMENT_ID_SEQUENCE_PREFIX + bizDate;
+
+        DictIdSequence sequence = dictIdSequenceRepository.findForUpdate(sequenceKey);
+        if (sequence == null) {
+            sequence = new DictIdSequence();
+            sequence.setBizDate(sequenceKey);
+            sequence.setSeq(1);
+        } else {
+            sequence.setSeq(sequence.getSeq() + 1);
+        }
+        sequence.setUpdateTime(now);
+        dictIdSequenceRepository.save(sequence);
+
+        return bizDate + "-" + String.format("%02d", sequence.getSeq());
     }
 
     private static class ValidationContext {
