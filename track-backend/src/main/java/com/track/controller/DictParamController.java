@@ -6,6 +6,7 @@ import com.track.entity.DictParam;
 import com.track.entity.DictParamItem;
 import com.track.service.DictParamService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.ArrayList;
@@ -23,9 +24,11 @@ public class DictParamController {
     private PermissionChecker permissionChecker;
 
     @GetMapping("/list")
-    public Result<List<DictParam>> list(@RequestParam(required = false) String keyword) {
+    public Result<Page<DictParam>> list(@RequestParam(required = false) String keyword,
+                                        @RequestParam(defaultValue = "1") Integer pageNum,
+                                        @RequestParam(defaultValue = "10") Integer pageSize) {
         permissionChecker.checkAnyRole("developer");
-        return dictParamService.list(keyword);
+        return dictParamService.list(keyword, pageNum, pageSize);
     }
 
     @GetMapping("/detail")

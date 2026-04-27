@@ -7,8 +7,14 @@ import com.track.repository.UserDataDeptRepository;
 import com.track.repository.UserRepository;
 import com.track.repository.UserRoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import javax.persistence.criteria.Predicate;
+import java.util.ArrayList;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -42,6 +48,32 @@ public class UserService {
 
     public List<User> findAll() {
         return userRepository.findAll();
+    }
+
+    public Page<User> pageList(String keyword, Integer pageNum, Integer pageSize) {
+        int safePageNum = pageNum == null || pageNum < 1 ? 1 : pageNum;
+        int safePageSize = pageSize == null || pageSize < 1 ? 10 : pageSize;
+        String key = keyword == null ? null : keyword.trim();
+        if (key != null && key.isEmpty()) {
+            key = null;
+        }
+
+        final String finalKey = key;
+        Pageable pageable = PageRequest.of(safePageNum - 1, safePageSize, Sort.by(Sort.Direction.DESC, "createTime"));
+        return userRepository.findAll((root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.or(
+                    cb.isNull(root.get("isBuiltinSuperAdmin")),
+                    cb.notEqual(root.get("isBuiltinSuperAdmin"), BUILTIN_SUPER_ADMIN_YES)
+            ));
+            if (finalKey != null) {
+                predicates.add(cb.or(
+                        cb.like(root.get("username"), "%" + finalKey + "%"),
+                        cb.like(root.get("nickname"), "%" + finalKey + "%")
+                ));
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        }, pageable);
     }
 
     public Result<User> addUser(User user) {

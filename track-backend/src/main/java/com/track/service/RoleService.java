@@ -12,6 +12,10 @@ import com.track.repository.RoleMenuRepository;
 import com.track.repository.RoleRepository;
 import com.track.repository.UserRoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -40,6 +44,13 @@ public class RoleService {
 
     public List<Role> findAll() {
         return roleRepository.findAll();
+    }
+
+    public Page<Role> pageList(Integer pageNum, Integer pageSize) {
+        int safePageNum = pageNum == null || pageNum < 1 ? 1 : pageNum;
+        int safePageSize = pageSize == null || pageSize < 1 ? 10 : pageSize;
+        Pageable pageable = PageRequest.of(safePageNum - 1, safePageSize, Sort.by(Sort.Direction.DESC, "createTime"));
+        return roleRepository.findAll(pageable);
     }
 
     public Role findById(Long id) {

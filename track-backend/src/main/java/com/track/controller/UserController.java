@@ -14,6 +14,8 @@ import com.track.repository.UserRoleRepository;
 import com.track.service.DataPermissionService;
 import com.track.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
@@ -47,21 +49,14 @@ public class UserController {
     private DataPermissionService dataPermissionService;
 
     @GetMapping("/list")
-    public Result<List<Map<String, Object>>> list(@RequestParam(required = false) String keyword) {
+    public Result<Page<Map<String, Object>>> list(@RequestParam(required = false) String keyword,
+                                                  @RequestParam(defaultValue = "1") Integer pageNum,
+                                                  @RequestParam(defaultValue = "10") Integer pageSize) {
         permissionChecker.checkPermission("system-user:view");
-
-        List<User> users = userService.findAll();
-        if (keyword != null && !keyword.trim().isEmpty()) {
-            String key = keyword.trim();
-            users = users.stream()
-                    .filter(u -> (u.getUsername() != null && u.getUsername().contains(key))
-                            || (u.getNickname() != null && u.getNickname().contains(key)))
-                    .collect(Collectors.toList());
-        }
-        users = users.stream()
-                .filter(u -> !userService.isBuiltInSuperAdmin(u))
-                .collect(Collectors.toList());
-        return Result.success(buildUserListResponse(users));
+        Page<User> userPage = userService.pageList(keyword, pageNum, pageSize);
+        List<Map<String, Object>> rows = buildUserListResponse(userPage.getContent());
+        Page<Map<String, Object>> resultPage = new PageImpl<>(rows, userPage.getPageable(), userPage.getTotalElements());
+        return Result.success(resultPage);
     }
 
     @GetMapping("/detail")

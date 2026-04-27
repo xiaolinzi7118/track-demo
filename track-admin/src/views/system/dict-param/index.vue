@@ -44,6 +44,22 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination">
+        <el-pagination
+          v-model:current-page="pageNum"
+          v-model:page-size="pageSize"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handlePageSizeChange"
+          @current-change="fetchList"
+        >
+          <template #total>
+            共 {{ Math.ceil(total / pageSize) || 0 }} 页
+          </template>
+        </el-pagination>
+      </div>
     </el-card>
   </div>
 </template>
@@ -57,6 +73,9 @@ import { deleteDictParam, getDictParamList } from '../../../api/dict-param'
 const router = useRouter()
 const loading = ref(false)
 const tableData = ref([])
+const total = ref(0)
+const pageNum = ref(1)
+const pageSize = ref(10)
 
 const searchForm = reactive({
   keyword: ''
@@ -65,9 +84,22 @@ const searchForm = reactive({
 const fetchList = async () => {
   loading.value = true
   try {
-    const res = await getDictParamList({ keyword: searchForm.keyword })
+    const params = {
+      keyword: searchForm.keyword || undefined,
+      pageNum: pageNum.value,
+      pageSize: pageSize.value
+    }
+    const res = await getDictParamList(params)
     if (res.code === 200) {
-      tableData.value = res.data || []
+      const data = res.data
+      if (Array.isArray(data)) {
+        total.value = data.length
+        const start = (pageNum.value - 1) * pageSize.value
+        tableData.value = data.slice(start, start + pageSize.value)
+      } else {
+        tableData.value = data?.content || []
+        total.value = data?.totalElements || tableData.value.length
+      }
     } else {
       ElMessage.error('加载失败')
     }
@@ -94,11 +126,18 @@ const openDetailPage = (action, row) => {
 }
 
 const handleSearch = () => {
+  pageNum.value = 1
   fetchList()
 }
 
 const handleReset = () => {
   searchForm.keyword = ''
+  pageNum.value = 1
+  fetchList()
+}
+
+const handlePageSizeChange = () => {
+  pageNum.value = 1
   fetchList()
 }
 
@@ -148,5 +187,11 @@ onMounted(() => {
 .name-link {
   color: #1f6feb;
   padding: 0;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 </style>

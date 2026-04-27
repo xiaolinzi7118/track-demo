@@ -11,6 +11,10 @@ import com.track.repository.DictParamItemRepository;
 import com.track.repository.DictParamRepository;
 import com.track.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,16 +43,24 @@ public class DictParamService {
     @Autowired
     private UserRepository userRepository;
 
-    public Result<List<DictParam>> list(String keyword) {
-        List<DictParam> params = dictParamRepository.findAll((root, query, cb) -> {
+    public Result<Page<DictParam>> list(String keyword, Integer pageNum, Integer pageSize) {
+        int safePageNum = pageNum == null || pageNum < 1 ? 1 : pageNum;
+        int safePageSize = pageSize == null || pageSize < 1 ? 10 : pageSize;
+        String key = keyword == null ? null : keyword.trim();
+        if (key != null && key.isEmpty()) {
+            key = null;
+        }
+
+        final String finalKey = key;
+        Pageable pageable = PageRequest.of(safePageNum - 1, safePageSize, Sort.by(Sort.Direction.DESC, "createTime"));
+        Page<DictParam> params = dictParamRepository.findAll((root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.equal(root.get("status"), 0));
-            if (keyword != null && !keyword.trim().isEmpty()) {
-                predicates.add(cb.like(root.get("paramName"), "%" + keyword.trim() + "%"));
+            if (finalKey != null) {
+                predicates.add(cb.like(root.get("paramName"), "%" + finalKey + "%"));
             }
-            query.orderBy(cb.desc(root.get("createTime")));
             return cb.and(predicates.toArray(new Predicate[0]));
-        });
+        }, pageable);
         return Result.success(params);
     }
 

@@ -6,6 +6,7 @@ import com.track.dto.RoleMenuItemResponse;
 import com.track.entity.Role;
 import com.track.service.RoleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -22,9 +23,10 @@ public class RoleController {
     private PermissionChecker permissionChecker;
 
     @GetMapping("/list")
-    public Result<List<Role>> list() {
+    public Result<Page<Role>> list(@RequestParam(defaultValue = "1") Integer pageNum,
+                                   @RequestParam(defaultValue = "10") Integer pageSize) {
         permissionChecker.checkPermission("system-role:view");
-        return Result.success(roleService.findAll());
+        return Result.success(roleService.pageList(pageNum, pageSize));
     }
 
     @GetMapping("/detail")

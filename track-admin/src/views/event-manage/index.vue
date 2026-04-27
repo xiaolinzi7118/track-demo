@@ -14,7 +14,7 @@
       <div class="search-form">
         <el-form :inline="true" :model="searchForm">
           <el-form-item label="事件类型">
-            <el-select v-model="searchForm.eventType" clearable placeholder="请选择">
+            <el-select v-model="searchForm.eventType" clearable placeholder="请选择" style="width: 160px">
               <el-option label="页面曝光" value="page_view" />
               <el-option label="点击交互" value="click" />
             </el-select>

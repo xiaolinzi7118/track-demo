@@ -7,7 +7,7 @@
           <el-button v-permission="'system-role:add'" type="primary" @click="handleAdd">新增角色</el-button>
         </div>
       </template>
-      <el-table :data="roleList" border stripe>
+      <el-table v-loading="loading" :data="roleList" border stripe>
         <el-table-column prop="roleCode" label="角色编码" width="150" />
         <el-table-column prop="roleName" label="角色名称" width="150" />
         <el-table-column prop="description" label="描述" />
@@ -26,6 +26,22 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination">
+        <el-pagination
+          v-model:current-page="pageNum"
+          v-model:page-size="pageSize"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handlePageSizeChange"
+          @current-change="loadRoles"
+        >
+          <template #total>
+            共 {{ Math.ceil(total / pageSize) || 0 }} 页
+          </template>
+        </el-pagination>
+      </div>
     </el-card>
 
     <!-- 新增/编辑角色弹窗 -->
@@ -109,6 +125,10 @@ import { getRoleList, addRole, updateRole, deleteRole, getRoleMenus, updateRoleM
 import { getMenuTree } from '../../api/menu'
 
 const roleList = ref([])
+const loading = ref(false)
+const total = ref(0)
+const pageNum = ref(1)
+const pageSize = ref(10)
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增角色')
 const roleForm = reactive({
@@ -139,10 +159,31 @@ const normalizeCheckedMenuIds = (menuData) => {
 }
 
 const loadRoles = async () => {
-  const res = await getRoleList()
-  if (res.code === 200) {
-    roleList.value = res.data || []
+  loading.value = true
+  try {
+    const res = await getRoleList({
+      pageNum: pageNum.value,
+      pageSize: pageSize.value
+    })
+    if (res.code === 200) {
+      const data = res.data
+      if (Array.isArray(data)) {
+        total.value = data.length
+        const start = (pageNum.value - 1) * pageSize.value
+        roleList.value = data.slice(start, start + pageSize.value)
+      } else {
+        roleList.value = data?.content || []
+        total.value = data?.totalElements || roleList.value.length
+      }
+    }
+  } finally {
+    loading.value = false
   }
+}
+
+const handlePageSizeChange = () => {
+  pageNum.value = 1
+  loadRoles()
 }
 
 const handleAdd = () => {
@@ -261,6 +302,11 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 .perm-tree-container {
   max-height: 500px;

@@ -11,7 +11,7 @@
         </div>
       </template>
 
-      <el-table :data="tableData" border stripe style="width: 100%">
+      <el-table v-loading="loading" :data="tableData" border stripe style="width: 100%">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" width="140" />
         <el-table-column prop="nickname" label="昵称" width="140" />
@@ -61,6 +61,22 @@
           </template>
         </el-table-column>
       </el-table>
+
+      <div class="pagination">
+        <el-pagination
+          v-model:current-page="pageNum"
+          v-model:page-size="pageSize"
+          :total="total"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="handlePageSizeChange"
+          @current-change="loadUsers"
+        >
+          <template #total>
+            共 {{ Math.ceil(total / pageSize) || 0 }} 页
+          </template>
+        </el-pagination>
+      </div>
     </el-card>
 
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="620px">
@@ -139,6 +155,10 @@ import { getRoleList } from '../../api/role'
 import { getDeptOptions } from '../../api/dict-param'
 
 const tableData = ref([])
+const loading = ref(false)
+const total = ref(0)
+const pageNum = ref(1)
+const pageSize = ref(10)
 const roleList = ref([])
 const deptOptions = ref([])
 const dialogVisible = ref(false)
@@ -166,17 +186,41 @@ const buildFormDefaults = () => ({
 })
 
 const loadUsers = async () => {
-  const res = await getUserList({})
-  if (res.code === 200) {
-    const users = res.data || []
-    tableData.value = users.filter(item => item.isSuperAdmin !== true)
+  loading.value = true
+  try {
+    const params = {
+      pageNum: pageNum.value,
+      pageSize: pageSize.value
+    }
+    const res = await getUserList(params)
+    if (res.code === 200) {
+      const data = res.data
+      if (Array.isArray(data)) {
+        const users = data.filter(item => item.isSuperAdmin !== true)
+        total.value = users.length
+        const start = (pageNum.value - 1) * pageSize.value
+        tableData.value = users.slice(start, start + pageSize.value)
+      } else {
+        const content = (data?.content || []).filter(item => item.isSuperAdmin !== true)
+        tableData.value = content
+        total.value = data?.totalElements || content.length
+      }
+    }
+  } finally {
+    loading.value = false
   }
 }
 
+const handlePageSizeChange = () => {
+  pageNum.value = 1
+  loadUsers()
+}
+
 const loadRoles = async () => {
-  const res = await getRoleList()
+  const res = await getRoleList({ pageNum: 1, pageSize: 1000 })
   if (res.code === 200) {
-    roleList.value = res.data || []
+    const data = res.data
+    roleList.value = Array.isArray(data) ? data : (data?.content || [])
   }
 }
 
@@ -314,5 +358,11 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
 }
 </style>

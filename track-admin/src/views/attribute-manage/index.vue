@@ -22,7 +22,7 @@
             />
           </el-form-item>
           <el-form-item label="属性类型">
-            <el-select v-model="searchForm.attributeType" clearable placeholder="请选择">
+            <el-select v-model="searchForm.attributeType" clearable placeholder="请选择" style="width: 160px">
               <el-option label="用户属性" value="user" />
               <el-option label="系统属性" value="system" />
               <el-option label="个性化属性" value="custom" />
