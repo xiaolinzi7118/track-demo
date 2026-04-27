@@ -45,6 +45,9 @@ public class TrackRequirement {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(length = 36)
+    private String screenshotFileId;
+
     @Column(nullable = false)
     private Long proposerId;
 
@@ -152,6 +155,14 @@ public class TrackRequirement {
         this.description = description;
     }
 
+    public String getScreenshotFileId() {
+        return screenshotFileId;
+    }
+
+    public void setScreenshotFileId(String screenshotFileId) {
+        this.screenshotFileId = screenshotFileId;
+    }
+
     public Long getProposerId() {
         return proposerId;
     }
@@ -208,4 +219,3 @@ public class TrackRequirement {
         this.logs = logs;
     }
 }
-

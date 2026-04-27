@@ -12,6 +12,7 @@ import com.track.entity.User;
 import com.track.repository.ApiInterfaceRepository;
 import com.track.repository.TrackAttributeRepository;
 import com.track.repository.TrackConfigRepository;
+import com.track.repository.TrackFileAssetRepository;
 import com.track.repository.TrackRequirementRepository;
 import com.track.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,6 +63,9 @@ public class TrackConfigService {
 
     @Autowired
     private ApiInterfaceRepository apiInterfaceRepository;
+
+    @Autowired
+    private TrackFileAssetRepository trackFileAssetRepository;
 
     @Autowired
     private PermissionChecker permissionChecker;
@@ -194,6 +198,7 @@ public class TrackConfigService {
         entity.setEventCode(trim(request.getEventCode()));
         entity.setEventType(trim(request.getEventType()));
         entity.setDescription(trimNullable(request.getDescription()));
+        entity.setPageScreenshotFileId(trim(request.getPageScreenshotFileId()));
         entity.setRequirementId(trim(request.getRequirementId()));
         entity.setParams(normalizedParams);
         entity.setUrlPattern(urlPattern.isEmpty() ? null : urlPattern);
@@ -248,6 +253,7 @@ public class TrackConfigService {
         existing.setEventCode(trim(request.getEventCode()));
         existing.setEventType(trim(request.getEventType()));
         existing.setDescription(trimNullable(request.getDescription()));
+        existing.setPageScreenshotFileId(trim(request.getPageScreenshotFileId()));
         existing.setRequirementId(trim(request.getRequirementId()));
         existing.setParams(normalizedParams);
         existing.setUrlPattern(urlPattern.isEmpty() ? null : urlPattern);
@@ -372,6 +378,11 @@ public class TrackConfigService {
         }
         if (!SELECTABLE_REQUIREMENT_STATUS.contains(requirement.getStatus())) {
             return "仅可关联排期中或开发中的需求";
+        }
+
+        String pageScreenshotFileId = trim(request.getPageScreenshotFileId());
+        if (pageScreenshotFileId != null && !trackFileAssetRepository.existsByFileId(pageScreenshotFileId)) {
+            return "页面截图文件不存在";
         }
         return null;
     }
@@ -596,3 +607,5 @@ public class TrackConfigService {
         return value.trim().isEmpty() ? null : value.trim();
     }
 }
+
+

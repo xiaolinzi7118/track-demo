@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="requirement-detail-page">
     <el-card v-loading="loading">
       <template #header>
@@ -29,6 +29,9 @@
               <el-descriptions-item label="负责开发团队" :span="2">{{ detail.devTeamName || '-' }}</el-descriptions-item>
               <el-descriptions-item label="需求描述" :span="2">
                 <div class="desc-block">{{ detail.description || '-' }}</div>
+              </el-descriptions-item>
+              <el-descriptions-item label="需求截图" :span="2">
+                <ImageUpload :model-value="detail.screenshotFileId" :readonly="true" />
               </el-descriptions-item>
             </el-descriptions>
 
@@ -109,6 +112,13 @@
                   placeholder="请输入需求的详细背景、目标和业务逻辑（非必填）"
                 />
               </el-form-item>
+              <el-form-item label="需求截图">
+                <ImageUpload
+                  v-model="form.screenshotFileId"
+                  :accept="['jpg', 'jpeg', 'png']"
+                  :max-size="2 * 1024 * 1024"
+                />
+              </el-form-item>
             </el-form>
 
             <div class="footer-actions">
@@ -130,6 +140,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useTabStore } from '../../store/tab'
 import { getDictParamIdsList } from '../../api/dict-param'
+import ImageUpload from '../../components/ImageUpload.vue'
 import { getRequirementDetail, resubmitRequirement } from '../../api/requirement'
 import { showActionError, showActionSuccess } from '../../utils/feedback'
 import {
@@ -164,7 +175,8 @@ const form = reactive({
   priority: '',
   expectedOnlineDate: '',
   devTeamCode: '',
-  description: ''
+  description: '',
+  screenshotFileId: ''
 })
 
 const formRules = reactive({
@@ -187,7 +199,8 @@ const normalizeFormPayload = (data) => ({
   priority: data.priority || '',
   expectedOnlineDate: data.expectedOnlineDate || '',
   devTeamCode: data.devTeamCode || '',
-  description: data.description ? data.description.trim() : null
+  description: data.description ? data.description.trim() : null,
+  screenshotFileId: data.screenshotFileId || null
 })
 
 const isFormChanged = () => {
@@ -204,6 +217,7 @@ const fillEditForm = (data) => {
   form.expectedOnlineDate = data.expectedOnlineDate || ''
   form.devTeamCode = data.devTeamCode || ''
   form.description = data.description || ''
+  form.screenshotFileId = data.screenshotFileId || ''
   originalFormSnapshot.value = normalizeFormPayload(form)
 }
 
@@ -321,3 +335,4 @@ onMounted(async () => {
   gap: 12px;
 }
 </style>
+

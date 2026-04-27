@@ -34,6 +34,7 @@ const routes = [
       },
       {
         path: 'track-config',
+        path: 'track-config',
         redirect: '/event-manage'
       },
       {

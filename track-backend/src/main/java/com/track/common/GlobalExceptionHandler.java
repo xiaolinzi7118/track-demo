@@ -3,6 +3,7 @@ package com.track.common;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
@@ -21,5 +22,11 @@ public class GlobalExceptionHandler {
     @ResponseBody
     public Result<Void> handleException(Exception e) {
         return Result.error("Internal server error: " + e.getMessage());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    @ResponseBody
+    public Result<Void> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
+        return Result.error("图片大小不能超过2MB");
     }
 }

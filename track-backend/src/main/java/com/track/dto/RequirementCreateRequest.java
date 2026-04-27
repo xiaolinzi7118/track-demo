@@ -14,6 +14,7 @@ public class RequirementCreateRequest {
 
     private String devTeamCode;
     private String description;
+    private String screenshotFileId;
 
     public String getTitle() {
         return title;
@@ -62,5 +63,12 @@ public class RequirementCreateRequest {
     public void setDescription(String description) {
         this.description = description;
     }
-}
 
+    public String getScreenshotFileId() {
+        return screenshotFileId;
+    }
+
+    public void setScreenshotFileId(String screenshotFileId) {
+        this.screenshotFileId = screenshotFileId;
+    }
+}

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="requirement-manage-page">
     <el-card>
       <template #header>
@@ -249,6 +249,13 @@
             placeholder="请输入需求的详细背景、目标和业务逻辑（非必填）"
           />
         </el-form-item>
+        <el-form-item label="需求截图">
+          <ImageUpload
+            v-model="form.screenshotFileId"
+            :accept="['jpg', 'jpeg', 'png']"
+            :max-size="2 * 1024 * 1024"
+          />
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="formDialogVisible = false">取消</el-button>
@@ -266,6 +273,7 @@ import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { useUserStore } from '../../store/user'
 import { getDictParamIdsList } from '../../api/dict-param'
+import ImageUpload from '../../components/ImageUpload.vue'
 import {
   addRequirement,
   changeRequirementStatus,
@@ -317,7 +325,8 @@ const form = reactive({
   priority: '',
   expectedOnlineDate: '',
   devTeamCode: '',
-  description: ''
+  description: '',
+  screenshotFileId: ''
 })
 
 const formRules = reactive({
@@ -343,7 +352,8 @@ const normalizeFormPayload = (data) => ({
   priority: data.priority || '',
   expectedOnlineDate: data.expectedOnlineDate || '',
   devTeamCode: data.devTeamCode || '',
-  description: data.description ? data.description.trim() : null
+  description: data.description ? data.description.trim() : null,
+  screenshotFileId: data.screenshotFileId || null
 })
 
 const clearForm = () => {
@@ -353,6 +363,7 @@ const clearForm = () => {
   form.expectedOnlineDate = ''
   form.devTeamCode = ''
   form.description = ''
+  form.screenshotFileId = ''
 }
 
 const loadDictOptions = async () => {
@@ -557,3 +568,4 @@ onMounted(async () => {
   margin-top: 16px;
 }
 </style>
+

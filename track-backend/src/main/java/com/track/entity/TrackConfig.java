@@ -22,6 +22,9 @@ public class TrackConfig {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(length = 36)
+    private String pageScreenshotFileId;
+
     @Column(columnDefinition = "TEXT")
     private String params;
 
@@ -85,6 +88,14 @@ public class TrackConfig {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public String getPageScreenshotFileId() {
+        return pageScreenshotFileId;
+    }
+
+    public void setPageScreenshotFileId(String pageScreenshotFileId) {
+        this.pageScreenshotFileId = pageScreenshotFileId;
     }
 
     public String getParams() {

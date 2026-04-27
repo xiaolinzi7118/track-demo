@@ -12,6 +12,7 @@ import com.track.entity.TrackRequirementAction;
 import com.track.entity.User;
 import com.track.repository.DictParamItemRepository;
 import com.track.repository.TrackLogRepository;
+import com.track.repository.TrackFileAssetRepository;
 import com.track.repository.TrackRequirementRepository;
 import com.track.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,6 +74,9 @@ public class RequirementService {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private TrackFileAssetRepository trackFileAssetRepository;
 
     @Autowired
     private PermissionChecker permissionChecker;
@@ -176,7 +180,8 @@ public class RequirementService {
                 request.getPriority(),
                 request.getExpectedOnlineDate() == null ? null : request.getExpectedOnlineDate().toString(),
                 request.getDevTeamCode(),
-                request.getDescription()
+                request.getDescription(),
+                request.getScreenshotFileId()
         );
         if (validation.getErrorMessage() != null) {
             return Result.error(validation.getErrorMessage());
@@ -194,6 +199,7 @@ public class RequirementService {
         requirement.setDevTeamName(validation.getDevTeamName());
         requirement.setExpectedOnlineDate(validation.getExpectedOnlineDate());
         requirement.setDescription(validation.getDescription());
+        requirement.setScreenshotFileId(validation.getScreenshotFileId());
         requirement.setProposerId(currentUser.getId());
         requirement.setProposerName(resolveUserDisplayName(currentUser));
         requirement.setDepartment(resolveDepartmentName(currentUser));
@@ -284,7 +290,8 @@ public class RequirementService {
                 request.getPriority(),
                 request.getExpectedOnlineDate() == null ? null : request.getExpectedOnlineDate().toString(),
                 request.getDevTeamCode(),
-                request.getDescription()
+                request.getDescription(),
+                request.getScreenshotFileId()
         );
         if (validation.getErrorMessage() != null) {
             return Result.error(validation.getErrorMessage());
@@ -304,6 +311,7 @@ public class RequirementService {
         requirement.setDevTeamName(validation.getDevTeamName());
         requirement.setExpectedOnlineDate(validation.getExpectedOnlineDate());
         requirement.setDescription(validation.getDescription());
+        requirement.setScreenshotFileId(validation.getScreenshotFileId());
         requirement.setStatus(STATUS_PENDING_REVIEW);
         requirement.setUpdateTime(now);
         trackRequirementRepository.save(requirement);
@@ -459,13 +467,15 @@ public class RequirementService {
                                                         String priority,
                                                         String expectedOnlineDateText,
                                                         String devTeamCode,
-                                                        String description) {
+                                                        String description,
+                                                        String screenshotFileId) {
         ValidationContext context = new ValidationContext();
         context.setTitle(normalize(title));
         context.setBusinessLineCode(normalize(businessLineCode));
         context.setPriority(normalize(priority));
         context.setDevTeamCode(normalize(devTeamCode));
         context.setDescription(normalizeNullable(description));
+        context.setScreenshotFileId(normalizeNullable(screenshotFileId));
 
         if (context.getTitle() == null) {
             context.setErrorMessage("Title is required");
@@ -518,6 +528,12 @@ public class RequirementService {
             return context;
         }
         context.setDevTeamName(devTeamItem.getItemName());
+
+        if (context.getScreenshotFileId() != null
+                && !trackFileAssetRepository.existsByFileId(context.getScreenshotFileId())) {
+            context.setErrorMessage("Screenshot file does not exist");
+            return context;
+        }
         return context;
     }
 
@@ -538,7 +554,8 @@ public class RequirementService {
                 || !Objects.equals(requirement.getPriority(), validation.getPriority())
                 || !Objects.equals(requirement.getExpectedOnlineDate(), validation.getExpectedOnlineDate())
                 || !Objects.equals(requirement.getDevTeamCode(), validation.getDevTeamCode())
-                || !Objects.equals(normalizeNullable(requirement.getDescription()), validation.getDescription());
+                || !Objects.equals(normalizeNullable(requirement.getDescription()), validation.getDescription())
+                || !Objects.equals(normalizeNullable(requirement.getScreenshotFileId()), validation.getScreenshotFileId());
     }
 
     private void writeLog(String requirementId,
@@ -622,6 +639,7 @@ public class RequirementService {
         private String devTeamCode;
         private String devTeamName;
         private String description;
+        private String screenshotFileId;
         private String errorMessage;
 
         public String getTitle() {
@@ -686,6 +704,14 @@ public class RequirementService {
 
         public void setDescription(String description) {
             this.description = description;
+        }
+
+        public String getScreenshotFileId() {
+            return screenshotFileId;
+        }
+
+        public void setScreenshotFileId(String screenshotFileId) {
+            this.screenshotFileId = screenshotFileId;
         }
 
         public String getErrorMessage() {

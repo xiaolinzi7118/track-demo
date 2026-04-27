@@ -15,6 +15,7 @@ public class RequirementResubmitRequest {
 
     private String devTeamCode;
     private String description;
+    private String screenshotFileId;
 
     public String getRequirementId() {
         return requirementId;
@@ -71,5 +72,12 @@ public class RequirementResubmitRequest {
     public void setDescription(String description) {
         this.description = description;
     }
-}
 
+    public String getScreenshotFileId() {
+        return screenshotFileId;
+    }
+
+    public void setScreenshotFileId(String screenshotFileId) {
+        this.screenshotFileId = screenshotFileId;
+    }
+}

@@ -1,4 +1,4 @@
-<template>
+﻿<template>
   <div class="event-manage">
     <el-card>
       <template #header>
@@ -168,6 +168,13 @@
             placeholder="请输入描述"
           />
         </el-form-item>
+        <el-form-item label="页面截图">
+          <ImageUpload
+            v-model="form.pageScreenshotFileId"
+            :accept="['jpg', 'jpeg', 'png']"
+            :max-size="2 * 1024 * 1024"
+          />
+        </el-form-item>
 
         <el-form-item label="关联属性">
           <div class="attribute-config">
@@ -317,6 +324,7 @@ import { computed, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { addEventManage, deleteEventManage, getAllApiInterfaces, getEventManageList, getEventRequirementOptions, updateEventManage } from '../../api/track'
 import { getAllAttributes } from '../../api/attribute'
+import ImageUpload from '../../components/ImageUpload.vue'
 
 const loading = ref(false)
 const submitLoading = ref(false)
@@ -343,6 +351,7 @@ const form = reactive({
   status: 1,
   requirementId: '',
   description: '',
+  pageScreenshotFileId: '',
   urlPattern: ''
 })
 
@@ -459,6 +468,7 @@ const resetForm = () => {
   form.status = 1
   form.requirementId = ''
   form.description = ''
+  form.pageScreenshotFileId = ''
   form.urlPattern = ''
   paramsList.value = []
 }
@@ -479,6 +489,7 @@ const handleEdit = async (row) => {
   form.status = row.status
   form.requirementId = row.requirementId
   form.description = row.description || ''
+  form.pageScreenshotFileId = row.pageScreenshotFileId || ''
   form.urlPattern = row.urlPattern || ''
   const originalParams = safeParseParams(row.params)
   const parsedParams = originalParams
@@ -671,6 +682,7 @@ const handleSubmit = async () => {
       status: form.status,
       requirementId: form.requirementId,
       description: form.description,
+      pageScreenshotFileId: form.pageScreenshotFileId || null,
       urlPattern: form.urlPattern,
       params: JSON.stringify(paramsList.value.map(row => normalizeParamRow(row)))
     }
@@ -755,3 +767,4 @@ handleSearch()
   margin-bottom: 12px;
 }
 </style>
+
