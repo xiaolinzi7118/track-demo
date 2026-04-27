@@ -7,6 +7,7 @@ import com.track.service.TrackAttributeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -59,5 +60,11 @@ public class TrackAttributeController {
     public Result<Void> delete(@RequestBody Map<String, Long> request) {
         permissionChecker.checkPermission("attribute:delete");
         return trackAttributeService.delete(request.get("id"));
+    }
+
+    @PostMapping("/import")
+    public Result<Map<String, Object>> importExcel(@RequestParam("file") MultipartFile file) {
+        permissionChecker.checkPermission("attribute:add");
+        return trackAttributeService.importExcel(file);
     }
 }

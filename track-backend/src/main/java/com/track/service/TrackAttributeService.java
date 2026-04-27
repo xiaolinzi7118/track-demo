@@ -14,6 +14,10 @@ import com.track.repository.DictIdSequenceRepository;
 import com.track.repository.TrackAttributeRepository;
 import com.track.repository.TrackConfigRepository;
 import com.track.repository.UserRepository;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -21,8 +25,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.persistence.criteria.Predicate;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -39,6 +45,10 @@ public class TrackAttributeService {
     private static final Set<String> VALID_SOURCE_TYPES = new HashSet<String>(
             Arrays.asList(SOURCE_NODE_CONTENT, SOURCE_API_DATA, "global_object", "local_cache", "static_value")
     );
+    private static final Set<String> IMPORT_TYPES = new HashSet<String>(Arrays.asList(TYPE_USER, TYPE_SYSTEM));
+    private static final String IMPORT_HEADER_NAME = "属性名称";
+    private static final String IMPORT_HEADER_FIELD = "属性字段";
+    private static final String IMPORT_HEADER_TYPE = "属性类型";
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     @Autowired
@@ -94,6 +104,89 @@ public class TrackAttributeService {
 
     public Result<List<TrackAttribute>> all() {
         return Result.success(trackAttributeRepository.findByStatusOrderByCreateTimeDesc(0));
+    }
+
+    @Transactional
+    public Result<Map<String, Object>> importExcel(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return Result.error("请选择导入文件");
+        }
+
+        String fileName = trim(file.getOriginalFilename());
+        if (fileName == null || !fileName.toLowerCase(Locale.ROOT).endsWith(".xlsx")) {
+            return Result.error("仅支持导入xlsx文件");
+        }
+
+        int totalCount = 0;
+        int successCount = 0;
+        List<Map<String, Object>> failList = new ArrayList<Map<String, Object>>();
+        String username = currentUsername();
+        DataFormatter formatter = new DataFormatter();
+
+        try (InputStream inputStream = file.getInputStream(); XSSFWorkbook workbook = new XSSFWorkbook(inputStream)) {
+            Sheet sheet = workbook.getNumberOfSheets() > 0 ? workbook.getSheetAt(0) : null;
+            if (sheet == null) {
+                return Result.error("模板内容为空");
+            }
+
+            Row headerRow = sheet.getRow(0);
+            if (!isValidImportHeader(headerRow, formatter)) {
+                return Result.error("模板表头不正确，请使用最新模板");
+            }
+
+            int lastRowNum = sheet.getLastRowNum();
+            for (int i = 1; i <= lastRowNum; i++) {
+                Row row = sheet.getRow(i);
+                String attributeName = trim(readCell(row, 0, formatter));
+                String attributeField = trim(readCell(row, 1, formatter));
+                String attributeTypeRaw = trim(readCell(row, 2, formatter));
+
+                if (attributeName == null && attributeField == null && attributeTypeRaw == null) {
+                    continue;
+                }
+
+                totalCount++;
+                int rowNum = i + 1;
+
+                String normalizedType = normalizeImportType(attributeTypeRaw);
+                if (!IMPORT_TYPES.contains(normalizedType)) {
+                    failList.add(buildImportFail(rowNum, "属性类型仅支持user/system（或用户属性/系统属性）"));
+                    continue;
+                }
+
+                TrackAttribute request = new TrackAttribute();
+                request.setAttributeName(attributeName);
+                request.setAttributeField(attributeField);
+                request.setAttributeType(normalizedType);
+
+                String validationError = validateRequest(request, null);
+                if (validationError != null) {
+                    failList.add(buildImportFail(rowNum, validationError));
+                    continue;
+                }
+
+                LocalDateTime now = LocalDateTime.now();
+                TrackAttribute entity = new TrackAttribute();
+                entity.setAttributeId(generateAttributeId(now));
+                fillBaseFields(entity, request);
+                entity.setStatus(0);
+                entity.setCreateBy(username);
+                entity.setUpdateBy(username);
+                entity.setCreateTime(now);
+                entity.setUpdateTime(now);
+                trackAttributeRepository.save(entity);
+                successCount++;
+            }
+        } catch (Exception e) {
+            throw new RuntimeException("解析Excel失败: " + e.getMessage(), e);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<String, Object>();
+        result.put("totalCount", totalCount);
+        result.put("successCount", successCount);
+        result.put("failCount", failList.size());
+        result.put("failList", failList);
+        return Result.success(result);
     }
 
     @Transactional
@@ -284,6 +377,53 @@ public class TrackAttributeService {
             }
         }
         return false;
+    }
+
+    private boolean isValidImportHeader(Row headerRow, DataFormatter formatter) {
+        if (headerRow == null) {
+            return false;
+        }
+        String headerA = trim(readCell(headerRow, 0, formatter));
+        String headerB = trim(readCell(headerRow, 1, formatter));
+        String headerC = trim(readCell(headerRow, 2, formatter));
+        return IMPORT_HEADER_NAME.equals(headerA)
+                && IMPORT_HEADER_FIELD.equals(headerB)
+                && IMPORT_HEADER_TYPE.equals(headerC);
+    }
+
+    private String readCell(Row row, int cellIndex, DataFormatter formatter) {
+        if (row == null || formatter == null) {
+            return null;
+        }
+        if (row.getCell(cellIndex) == null) {
+            return null;
+        }
+        return formatter.formatCellValue(row.getCell(cellIndex));
+    }
+
+    private String normalizeImportType(String rawType) {
+        String value = trim(rawType);
+        if (value == null) {
+            return null;
+        }
+        if ("用户属性".equals(value)) {
+            return TYPE_USER;
+        }
+        if ("系统属性".equals(value)) {
+            return TYPE_SYSTEM;
+        }
+        String lower = value.toLowerCase(Locale.ROOT);
+        if (TYPE_USER.equals(lower) || TYPE_SYSTEM.equals(lower)) {
+            return lower;
+        }
+        return null;
+    }
+
+    private Map<String, Object> buildImportFail(Integer rowNum, String message) {
+        Map<String, Object> fail = new LinkedHashMap<String, Object>();
+        fail.put("rowNum", rowNum);
+        fail.put("message", message);
+        return fail;
     }
 
     private String generateAttributeId(LocalDateTime now) {

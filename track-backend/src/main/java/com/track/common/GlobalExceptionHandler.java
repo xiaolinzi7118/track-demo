@@ -27,6 +27,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     @ResponseBody
     public Result<Void> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException e) {
-        return Result.error("图片大小不能超过2MB");
+        return Result.error("上传文件大小不能超过2MB");
     }
 }

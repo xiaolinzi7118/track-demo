@@ -4,10 +4,27 @@
       <template #header>
         <div class="card-header">
           <span>属性管理</span>
-          <el-button v-permission="'attribute:add'" type="primary" @click="handleAdd">
-            <el-icon><Plus /></el-icon>
-            新增属性
-          </el-button>
+          <div class="header-actions">
+            <el-button v-permission="'attribute:view'" @click="handleDownloadTemplate">下载模板</el-button>
+            <el-button
+              v-permission="'attribute:add'"
+              :loading="importLoading"
+              @click="handleTriggerImport"
+            >
+              导入属性
+            </el-button>
+            <el-button v-permission="'attribute:add'" type="primary" @click="handleAdd">
+              <el-icon><Plus /></el-icon>
+              新增属性
+            </el-button>
+            <input
+              ref="importInputRef"
+              class="hidden-file-input"
+              type="file"
+              accept=".xlsx"
+              @change="handleImportChange"
+            >
+          </div>
         </div>
       </template>
 
@@ -178,13 +195,15 @@
 import { reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getAllApiInterfaces } from '../../api/track'
-import { addAttribute, deleteAttribute, getAttributeList, updateAttribute } from '../../api/attribute'
+import { addAttribute, deleteAttribute, getAttributeList, importAttribute, updateAttribute } from '../../api/attribute'
 
 const loading = ref(false)
 const submitLoading = ref(false)
+const importLoading = ref(false)
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref(null)
+const importInputRef = ref(null)
 
 const tableData = ref([])
 const total = ref(0)
@@ -300,6 +319,73 @@ const handleAdd = () => {
   isEdit.value = false
   resetForm()
   dialogVisible.value = true
+}
+
+const handleDownloadTemplate = () => {
+  const link = document.createElement('a')
+  link.href = encodeURI('/mockData/属性导入模板.xlsx')
+  link.download = '属性导入模板.xlsx'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+}
+
+const handleTriggerImport = () => {
+  if (importLoading.value) return
+  if (!importInputRef.value) return
+  importInputRef.value.value = ''
+  importInputRef.value.click()
+}
+
+const renderImportFailMessage = (failList) => {
+  if (!Array.isArray(failList) || failList.length === 0) return ''
+  return failList
+    .slice(0, 10)
+    .map(item => `第${item.rowNum}行：${item.message}`)
+    .join('\n')
+}
+
+const handleImportChange = async (event) => {
+  const file = event?.target?.files?.[0]
+  if (!file) return
+  if (!file.name.toLowerCase().endsWith('.xlsx')) {
+    ElMessage.error('仅支持导入 .xlsx 文件')
+    return
+  }
+
+  importLoading.value = true
+  try {
+    const res = await importAttribute(file)
+    if (res.code !== 200) {
+      ElMessage.error(res.message || '导入失败')
+      return
+    }
+
+    const data = res.data || {}
+    const totalCount = data.totalCount || 0
+    const successCount = data.successCount || 0
+    const failCount = data.failCount || 0
+    const failList = data.failList || []
+
+    if (failCount > 0) {
+      const failMessage = renderImportFailMessage(failList)
+      await ElMessageBox.alert(
+        `共 ${totalCount} 条，成功 ${successCount} 条，失败 ${failCount} 条。${failMessage ? `\n\n${failMessage}` : ''}`,
+        '导入结果',
+        { type: 'warning' }
+      )
+    } else {
+      ElMessage.success(`导入完成，共 ${totalCount} 条，成功 ${successCount} 条`)
+    }
+
+    pageNum.value = 1
+    await handleSearch()
+  } finally {
+    importLoading.value = false
+    if (importInputRef.value) {
+      importInputRef.value.value = ''
+    }
+  }
 }
 
 const handleEdit = (row) => {
@@ -464,6 +550,16 @@ handleSearch()
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.hidden-file-input {
+  display: none;
 }
 
 .search-form {

@@ -46,3 +46,16 @@ export function deleteAttribute(id) {
     data: { id }
   })
 }
+
+export function importAttribute(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/attribute/import',
+    method: 'post',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
