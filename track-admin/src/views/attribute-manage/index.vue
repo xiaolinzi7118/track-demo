@@ -90,7 +90,11 @@
           layout="total, sizes, prev, pager, next, jumper"
           @size-change="handleSearch"
           @current-change="handleSearch"
-        />
+        >
+          <template #total>
+            共 {{ Math.ceil(total / pageSize) || 0 }} 页
+          </template>
+        </el-pagination>
       </div>
     </el-card>
 

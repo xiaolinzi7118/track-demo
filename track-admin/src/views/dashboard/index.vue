@@ -191,7 +191,7 @@ onMounted(() => {
 }
 
 .stat-icon.blue {
-  background: linear-gradient(135deg, #409eff, #66b1ff);
+  background: linear-gradient(135deg, #ea3156, #f06a86);
 }
 
 .stat-icon.green {
@@ -261,13 +261,13 @@ onMounted(() => {
 }
 
 .entry-item:hover {
-  background: #ecf5ff;
+  background: #fcebef;
   transform: translateY(-2px);
 }
 
 .entry-icon {
   font-size: 32px;
-  color: #409eff;
+  color: var(--el-color-primary);
   margin-bottom: 8px;
 }
 

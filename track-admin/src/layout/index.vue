@@ -63,7 +63,7 @@
           :key="tab.path"
           class="nav-tag"
           :class="{ active: tab.path === tabStore.activeTab }"
-          :effect="tab.path === tabStore.activeTab ? 'dark' : 'plain'"
+          :effect="'plain'"
           :closable="tab.closable"
           @click="handleTagClick(tab.path)"
           @close="handleTagClose(tab.path)"
@@ -131,42 +131,94 @@ onMounted(() => {
 <style scoped>
 .layout-container {
   height: 100vh;
+  background: #f5f6fa;
 }
 
 .aside {
-  background-color: #304156;
+  background-color: #fff;
+  border-right: 1px solid #ebeef5;
 }
 
 .logo {
   height: 60px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  background-color: #263445;
+  justify-content: flex-start;
+  padding: 0 18px;
+  background-color: #ea3156;
 }
 
 .logo h2 {
   color: #fff;
-  font-size: 16px;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0.2px;
   margin: 0;
 }
 
 .menu {
   border-right: none;
+  background: transparent;
+}
+
+.menu :deep(.el-menu) {
+  border-right: none;
+  background: transparent;
+}
+
+.menu :deep(.el-sub-menu__title),
+.menu :deep(.el-menu-item) {
+  height: 46px;
+  line-height: 46px;
+  color: #333;
+}
+
+.menu :deep(.el-sub-menu__title:hover),
+.menu :deep(.el-menu-item:hover) {
+  color: #ea3156;
+  background: #fcebef;
+}
+
+.menu :deep(.el-sub-menu .el-menu-item) {
+  padding-left: 52px !important;
+}
+
+.menu :deep(.el-menu-item.is-active) {
+  color: #ea3156;
+  font-weight: 600;
+  background: #fcebef;
+  position: relative;
+}
+
+.menu :deep(.el-menu-item.is-active)::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  background: #ea3156;
+  border-radius: 0 2px 2px 0;
+}
+
+.menu :deep(.el-menu-item .el-icon),
+.menu :deep(.el-sub-menu__title .el-icon) {
+  color: inherit;
 }
 
 .header {
-  background-color: #fff;
+  background-color: #ea3156;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 20px;
-  box-shadow: 0 1px 4px rgba(0, 21, 41, 0.08);
+  padding: 0 16px;
+  box-shadow: none;
 }
 
 .header-left span {
   font-size: 14px;
-  color: #606266;
+  color: rgba(255, 255, 255, 0.95);
 }
 
 .header-right {
@@ -179,16 +231,16 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  color: #606266;
+  color: #fff;
 }
 
 .tag-nav {
   display: flex;
   flex-wrap: nowrap;
   gap: 8px;
-  padding: 10px 16px;
+  padding: 8px 14px;
   background: #fff;
-  border-top: 1px solid #f0f2f5;
+  border-top: 1px solid #e54165;
   border-bottom: 1px solid #ebeef5;
   overflow-x: auto;
 }
@@ -196,14 +248,20 @@ onMounted(() => {
 .nav-tag {
   cursor: pointer;
   user-select: none;
+  --el-tag-border-color: #dcdfe6;
+  --el-tag-bg-color: #fff;
+  --el-tag-text-color: #606266;
 }
 
 .nav-tag.active {
-  border-color: var(--el-color-primary);
+  --el-tag-border-color: #f6a8b8;
+  --el-tag-bg-color: #fcebef;
+  --el-tag-text-color: var(--el-color-primary);
+  font-weight: 500;
 }
 
 .main {
-  background-color: #f5f7fa;
-  padding: 20px;
+  background-color: #f5f6fa;
+  padding: 16px;
 }
 </style>

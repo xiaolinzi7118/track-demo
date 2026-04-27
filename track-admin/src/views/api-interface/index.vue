@@ -46,7 +46,11 @@
         layout="total, sizes, prev, pager, next, jumper"
         @size-change="handleSearch"
         @current-change="handleSearch"
-      />
+      >
+        <template #total>
+          共 {{ Math.ceil(total / pageSize) || 0 }} 页
+        </template>
+      </el-pagination>
     </div>
 
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑接口' : '新增接口'" width="500px" destroy-on-close>
