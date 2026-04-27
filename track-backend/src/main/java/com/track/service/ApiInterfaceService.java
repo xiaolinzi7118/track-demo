@@ -8,6 +8,7 @@ import com.track.entity.ApiInterface;
 import com.track.entity.TrackConfig;
 import com.track.entity.User;
 import com.track.repository.ApiInterfaceRepository;
+import com.track.repository.TrackAttributeRepository;
 import com.track.repository.TrackConfigRepository;
 import com.track.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,6 +31,9 @@ public class ApiInterfaceService {
 
     @Autowired
     private TrackConfigRepository trackConfigRepository;
+
+    @Autowired
+    private TrackAttributeRepository trackAttributeRepository;
 
     @Autowired
     private PermissionChecker permissionChecker;
@@ -137,6 +141,12 @@ public class ApiInterfaceService {
         if (!canAccess(existing.getDeptId(), currentScope())) {
             return Result.error("No permission to delete this record");
         }
+        if (trackAttributeRepository.existsByInterfaceIdAndStatus(id, 0)) {
+            return Result.error("接口已被属性引用，无法删除");
+        }
+        if (getReferencedInterfaceIds().contains(id)) {
+            return Result.error("接口已被事件引用，无法删除");
+        }
         apiInterfaceRepository.deleteById(id);
         return Result.success();
     }
@@ -147,6 +157,13 @@ public class ApiInterfaceService {
             return Result.success(new ArrayList<>());
         }
         List<ApiInterface> interfaces = apiInterfaceRepository.findAllById(referencedIds);
+        if (permissionChecker.getCurrentUserId() == null) {
+            List<String> allPaths = interfaces.stream()
+                    .map(ApiInterface::getPath)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+            return Result.success(allPaths);
+        }
         DataPermissionService.DataScope scope = currentScope();
         List<String> paths = interfaces.stream()
                 .filter(i -> canAccess(i.getDeptId(), scope))
@@ -171,7 +188,15 @@ public class ApiInterfaceService {
                         });
                 for (Map<String, Object> param : params) {
                     if ("api_data".equals(param.get("sourceType")) && param.get("interfaceId") != null) {
-                        interfaceIds.add(((Number) param.get("interfaceId")).longValue());
+                        Object interfaceIdObj = param.get("interfaceId");
+                        if (interfaceIdObj instanceof Number) {
+                            interfaceIds.add(((Number) interfaceIdObj).longValue());
+                        } else {
+                            try {
+                                interfaceIds.add(Long.parseLong(String.valueOf(interfaceIdObj)));
+                            } catch (Exception ignored) {
+                            }
+                        }
                     }
                 }
             } catch (Exception ignored) {

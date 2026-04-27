@@ -76,22 +76,28 @@ VALUES
 
     (2, 0, '埋点管理', 'track', '/track', 'DataAnalysis', 2, 1, NULL, 1, NOW(3), NOW(3)),
 
-    (3, 2, '埋点配置', 'track-config', '/track-config', 'Setting', 1, 2, NULL, 1, NOW(3), NOW(3)),
-    (4, 3, '查看', 'track-config:view', NULL, NULL, 1, 3, 'track-config:view', 1, NOW(3), NOW(3)),
-    (5, 3, '新增', 'track-config:add', NULL, NULL, 2, 3, 'track-config:add', 1, NOW(3), NOW(3)),
-    (6, 3, '编辑', 'track-config:edit', NULL, NULL, 3, 3, 'track-config:edit', 1, NOW(3), NOW(3)),
-    (7, 3, '删除', 'track-config:delete', NULL, NULL, 4, 3, 'track-config:delete', 1, NOW(3), NOW(3)),
+    (3, 2, '事件管理', 'event-manage', '/event-manage', 'Setting', 1, 2, NULL, 1, NOW(3), NOW(3)),
+    (4, 3, '查看', 'event-manage:view', NULL, NULL, 1, 3, 'event-manage:view', 1, NOW(3), NOW(3)),
+    (5, 3, '新增', 'event-manage:add', NULL, NULL, 2, 3, 'event-manage:add', 1, NOW(3), NOW(3)),
+    (6, 3, '编辑', 'event-manage:edit', NULL, NULL, 3, 3, 'event-manage:edit', 1, NOW(3), NOW(3)),
+    (7, 3, '删除', 'event-manage:delete', NULL, NULL, 4, 3, 'event-manage:delete', 1, NOW(3), NOW(3)),
 
-    (8, 2, '接口来源管理', 'api-interface', '/api-interface', 'Link', 2, 2, NULL, 1, NOW(3), NOW(3)),
+    (32, 2, '属性管理', 'attribute-manage', '/attribute-manage', 'CollectionTag', 2, 2, NULL, 1, NOW(3), NOW(3)),
+    (33, 32, '查看', 'attribute:view', NULL, NULL, 1, 3, 'attribute:view', 1, NOW(3), NOW(3)),
+    (34, 32, '新增', 'attribute:add', NULL, NULL, 2, 3, 'attribute:add', 1, NOW(3), NOW(3)),
+    (35, 32, '编辑', 'attribute:edit', NULL, NULL, 3, 3, 'attribute:edit', 1, NOW(3), NOW(3)),
+    (36, 32, '删除', 'attribute:delete', NULL, NULL, 4, 3, 'attribute:delete', 1, NOW(3), NOW(3)),
+
+    (8, 2, '接口来源管理', 'api-interface', '/api-interface', 'Link', 3, 2, NULL, 1, NOW(3), NOW(3)),
     (9, 8, '查看', 'api-interface:view', NULL, NULL, 1, 3, 'api-interface:view', 1, NOW(3), NOW(3)),
     (10, 8, '新增', 'api-interface:add', NULL, NULL, 2, 3, 'api-interface:add', 1, NOW(3), NOW(3)),
     (11, 8, '编辑', 'api-interface:edit', NULL, NULL, 3, 3, 'api-interface:edit', 1, NOW(3), NOW(3)),
     (12, 8, '删除', 'api-interface:delete', NULL, NULL, 4, 3, 'api-interface:delete', 1, NOW(3), NOW(3)),
 
-    (13, 2, '数据回检', 'track-data', '/track-data', 'DataLine', 3, 2, NULL, 1, NOW(3), NOW(3)),
+    (13, 2, '数据回检', 'track-data', '/track-data', 'DataLine', 4, 2, NULL, 1, NOW(3), NOW(3)),
     (14, 13, '查看', 'track-data:view', NULL, NULL, 1, 3, 'track-data:view', 1, NOW(3), NOW(3)),
 
-    (27, 2, '需求管理', 'requirement-manage', '/requirement-manage', 'Tickets', 4, 2, NULL, 1, NOW(3), NOW(3)),
+    (27, 2, '需求管理', 'requirement-manage', '/requirement-manage', 'Tickets', 5, 2, NULL, 1, NOW(3), NOW(3)),
     (28, 27, '查看', 'requirement-manage:view', NULL, NULL, 1, 3, 'requirement-manage:view', 1, NOW(3), NOW(3)),
     (29, 27, '新增', 'requirement-manage:add', NULL, NULL, 2, 3, 'requirement-manage:add', 1, NOW(3), NOW(3)),
     (30, 27, '状态变更', 'requirement-manage:status', NULL, NULL, 3, 3, 'requirement-manage:status', 1, NOW(3), NOW(3)),

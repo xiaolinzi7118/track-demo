@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS track_config (
     event_name VARCHAR(255) NOT NULL,
     event_code VARCHAR(255) NOT NULL,
     event_type VARCHAR(50) NOT NULL,
+    requirement_id VARCHAR(36) DEFAULT NULL COMMENT '关联需求ID(track_requirement.requirement_id)',
     description TEXT,
     params TEXT,
     url_pattern TEXT,
@@ -85,8 +86,31 @@ CREATE TABLE IF NOT EXISTS track_config (
     PRIMARY KEY (id),
     KEY idx_track_config_event_code (event_code),
     KEY idx_track_config_event_type (event_type),
+    KEY idx_track_config_requirement_id (requirement_id),
     KEY idx_track_config_create_time (create_time),
     KEY idx_track_config_dept_create (dept_id, create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS track_attribute (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    attribute_id VARCHAR(32) NOT NULL COMMENT '业务ID，格式：ATTR+yyyyMMdd+8位序号',
+    attribute_name VARCHAR(100) NOT NULL COMMENT '属性名称',
+    attribute_field VARCHAR(100) NOT NULL COMMENT '属性字段',
+    attribute_type VARCHAR(20) NOT NULL COMMENT '属性类型：user/system/custom',
+    source_type VARCHAR(50) DEFAULT NULL COMMENT '来源类型(custom时有效)',
+    source_value VARCHAR(500) DEFAULT NULL COMMENT '变量路径或静态值',
+    interface_id BIGINT DEFAULT NULL COMMENT '接口ID(api_data时有效)',
+    interface_path VARCHAR(500) DEFAULT NULL COMMENT '接口路径',
+    default_value VARCHAR(255) DEFAULT NULL COMMENT '取值失败默认值',
+    status TINYINT NOT NULL DEFAULT 0 COMMENT '0=生效,1=已删除',
+    create_by VARCHAR(64) DEFAULT NULL,
+    update_by VARCHAR(64) DEFAULT NULL,
+    create_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
+    update_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_track_attribute_attribute_id (attribute_id),
+    KEY idx_track_attribute_type_status (attribute_type, status),
+    KEY idx_track_attribute_create_time (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS track_data (
@@ -200,7 +224,7 @@ CREATE TABLE IF NOT EXISTS dict_param_item (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS dict_id_sequence (
-    biz_date VARCHAR(8) NOT NULL,
+    biz_date VARCHAR(32) NOT NULL COMMENT '序列键，例如yyyyMMdd或ATTRyyyyMMdd',
     seq INT NOT NULL,
     update_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     PRIMARY KEY (biz_date)

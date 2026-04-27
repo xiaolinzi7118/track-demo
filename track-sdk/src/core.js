@@ -30,8 +30,10 @@ class TrackCore {
 
   async fetchTrackConfig() {
     try {
-      const response = await fetch(`${this.config.serverUrl}/api/track-config/all`)
-      const result = await response.json()
+      const result = await this.fetchConfigWithFallback([
+        `${this.config.serverUrl}/api/event-manage/all`,
+        `${this.config.serverUrl}/api/track-config/all`
+      ])
       if (result.code === 200) {
         this.currentTrackConfig = result.data || []
         if (this.config.debug) {
@@ -45,6 +47,23 @@ class TrackCore {
     } catch (error) {
       console.error('Failed to fetch track config:', error)
     }
+  }
+
+  async fetchConfigWithFallback(urls) {
+    let lastError = null
+    for (const url of urls) {
+      try {
+        const response = await fetch(url)
+        if (!response.ok) continue
+        return await response.json()
+      } catch (error) {
+        lastError = error
+      }
+    }
+    if (lastError) {
+      throw lastError
+    }
+    return { code: 500, message: 'fetch config failed', data: [] }
   }
 
   async fetchReferencedPaths() {
@@ -126,7 +145,7 @@ class TrackCore {
     }
 
     // 跳过 SDK 自身的请求
-    if (urlPath.startsWith('/api/track-config') || urlPath.startsWith('/api/track-data') || urlPath.startsWith('/api/api-interface')) {
+    if (urlPath.startsWith('/api/track-config') || urlPath.startsWith('/api/event-manage') || urlPath.startsWith('/api/track-data') || urlPath.startsWith('/api/api-interface')) {
       return
     }
 
@@ -208,15 +227,7 @@ class TrackCore {
       const matchedConfig = this.findMatchedConfig(pageUrl, 'click', trackId)
 
       if (matchedConfig) {
-        // 解析参数配置
-        let paramsConfig = []
-        try {
-          paramsConfig = matchedConfig.params ? JSON.parse(matchedConfig.params) : []
-        } catch (err) {
-          if (this.config.debug) {
-            console.warn('Failed to parse params config:', err)
-          }
-        }
+        const paramsConfig = this.parseParamsConfig(matchedConfig.params)
 
         // 根据配置动态获取参数（不再有基础参数）
         const dynamicParams = this.buildParams(paramsConfig, target)
@@ -251,15 +262,7 @@ class TrackCore {
     const matchedConfig = this.findMatchedConfig(pageUrl, 'page_view')
 
     if (matchedConfig) {
-      // 解析参数配置
-      let paramsConfig = []
-      try {
-        paramsConfig = matchedConfig.params ? JSON.parse(matchedConfig.params) : []
-      } catch (err) {
-        if (this.config.debug) {
-          console.warn('Failed to parse params config:', err)
-        }
-      }
+      const paramsConfig = this.parseParamsConfig(matchedConfig.params)
 
       // 过滤掉仅点击事件支持的参数类型
       const validParamsConfig = paramsConfig.filter(p => p.sourceType !== 'node_content' && p.sourceType !== 'api_data')
@@ -384,28 +387,34 @@ class TrackCore {
    * @returns {any} 参数值
    */
   getParamValue(paramConfig, targetElement = null) {
-    const { sourceType, sourceValue, defaultValue, paramName } = paramConfig
+    const { attributeType, attributeField, sourceType, sourceValue, defaultValue, paramName } = paramConfig
     let value = defaultValue || ''
 
     try {
-      switch (sourceType) {
-        case 'node_content':
-          value = this.getNodeContent(targetElement)
-          break
-        case 'api_data':
-          value = this.getApiDataValue(paramConfig)
-          break
-        case 'global_object':
-          value = this.getGlobalObjectValue(sourceValue)
-          break
-        case 'local_cache':
-          value = this.getLocalCacheValue(sourceValue)
-          break
-        case 'static_value':
-          value = sourceValue
-          break
-        default:
-          value = defaultValue || ''
+      if (attributeType === 'user') {
+        value = this.getUserAttributeValue(attributeField)
+      } else if (attributeType === 'system') {
+        value = this.getSystemAttributeValue(attributeField)
+      } else {
+        switch (sourceType) {
+          case 'node_content':
+            value = this.getNodeContent(targetElement)
+            break
+          case 'api_data':
+            value = this.getApiDataValue(paramConfig)
+            break
+          case 'global_object':
+            value = this.getGlobalObjectValue(sourceValue)
+            break
+          case 'local_cache':
+            value = this.getLocalCacheValue(sourceValue)
+            break
+          case 'static_value':
+            value = sourceValue
+            break
+          default:
+            value = defaultValue || ''
+        }
       }
     } catch (error) {
       if (this.config.debug) {
@@ -415,6 +424,25 @@ class TrackCore {
     }
 
     return value
+  }
+
+  getUserAttributeValue(attributeField) {
+    if (!attributeField) return ''
+    if (window.userInfo && window.userInfo[attributeField] !== undefined && window.userInfo[attributeField] !== null) {
+      return window.userInfo[attributeField]
+    }
+    if (this.userInfo && this.userInfo[attributeField] !== undefined && this.userInfo[attributeField] !== null) {
+      return this.userInfo[attributeField]
+    }
+    return ''
+  }
+
+  getSystemAttributeValue(attributeField) {
+    if (!attributeField) return ''
+    if (window.system && window.system[attributeField] !== undefined && window.system[attributeField] !== null) {
+      return window.system[attributeField]
+    }
+    return ''
   }
 
   /**
@@ -537,13 +565,27 @@ class TrackCore {
     }
 
     paramsConfig.forEach(config => {
-      const { paramName } = config
-      if (paramName) {
-        params[paramName] = this.getParamValue(config, targetElement)
+      const paramKey = config.attributeField || config.paramName
+      if (paramKey) {
+        params[paramKey] = this.getParamValue(config, targetElement)
       }
     })
 
     return params
+  }
+
+  parseParamsConfig(rawParams) {
+    if (!rawParams) return []
+    if (Array.isArray(rawParams)) return rawParams
+    try {
+      const parsed = JSON.parse(rawParams)
+      return Array.isArray(parsed) ? parsed : []
+    } catch (err) {
+      if (this.config.debug) {
+        console.warn('Failed to parse params config:', err)
+      }
+      return []
+    }
   }
 }
 

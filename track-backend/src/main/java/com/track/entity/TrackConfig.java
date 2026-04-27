@@ -25,6 +25,8 @@ public class TrackConfig {
     @Column(columnDefinition = "TEXT")
     private String params;
 
+    private String requirementId;
+
     @Column(columnDefinition = "TEXT")
     private String urlPattern;
 
@@ -35,6 +37,15 @@ public class TrackConfig {
     private LocalDateTime createTime;
 
     private LocalDateTime updateTime;
+
+    @Transient
+    private String requirementTitle;
+
+    @Transient
+    private String requirementStatus;
+
+    @Transient
+    private String requirementStatusLabel;
 
     public Long getId() {
         return id;
@@ -84,6 +95,14 @@ public class TrackConfig {
         this.params = params;
     }
 
+    public String getRequirementId() {
+        return requirementId;
+    }
+
+    public void setRequirementId(String requirementId) {
+        this.requirementId = requirementId;
+    }
+
     public String getUrlPattern() {
         return urlPattern;
     }
@@ -122,5 +141,29 @@ public class TrackConfig {
 
     public void setUpdateTime(LocalDateTime updateTime) {
         this.updateTime = updateTime;
+    }
+
+    public String getRequirementTitle() {
+        return requirementTitle;
+    }
+
+    public void setRequirementTitle(String requirementTitle) {
+        this.requirementTitle = requirementTitle;
+    }
+
+    public String getRequirementStatus() {
+        return requirementStatus;
+    }
+
+    public void setRequirementStatus(String requirementStatus) {
+        this.requirementStatus = requirementStatus;
+    }
+
+    public String getRequirementStatusLabel() {
+        return requirementStatusLabel;
+    }
+
+    public void setRequirementStatusLabel(String requirementStatusLabel) {
+        this.requirementStatusLabel = requirementStatusLabel;
     }
 }

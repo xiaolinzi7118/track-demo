@@ -25,7 +25,8 @@ WHERE r.role_code = 'business'
   AND m.menu_code IN (
       'dashboard',
       'track',
-      'track-config', 'track-config:view', 'track-config:add', 'track-config:edit', 'track-config:delete',
+      'event-manage', 'event-manage:view', 'event-manage:add', 'event-manage:edit', 'event-manage:delete',
+      'attribute-manage', 'attribute:view', 'attribute:add', 'attribute:edit', 'attribute:delete',
       'api-interface', 'api-interface:view', 'api-interface:add', 'api-interface:edit', 'api-interface:delete',
       'track-data', 'track-data:view',
       'requirement-manage', 'requirement-manage:view', 'requirement-manage:add', 'requirement-manage:resubmit'
@@ -40,7 +41,8 @@ WHERE r.role_code = 'developer'
   AND m.menu_code IN (
       'dashboard',
       'track',
-      'track-config', 'track-config:view',
+      'event-manage', 'event-manage:view',
+      'attribute-manage', 'attribute:view',
       'api-interface', 'api-interface:view',
       'track-data', 'track-data:view',
       'requirement-manage', 'requirement-manage:view', 'requirement-manage:status'

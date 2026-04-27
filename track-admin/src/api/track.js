@@ -1,59 +1,69 @@
-﻿import request from '../utils/request'
+import request from '../utils/request'
 
-export function getTrackConfigList(params) {
+// ===== 事件管理 =====
+export function getEventManageList(params) {
   return request({
-    url: '/track-config/list',
+    url: '/event-manage/list',
     method: 'get',
     params
   })
 }
 
-export function getAllTrackConfig() {
+export function getAllEventManage() {
   return request({
-    url: '/track-config/all',
+    url: '/event-manage/all',
     method: 'get'
   })
 }
 
-export function getTrackConfigDetail(id) {
+export function getEventManageDetail(id) {
   return request({
-    url: '/track-config/detail',
+    url: '/event-manage/detail',
     method: 'get',
     params: { id }
   })
 }
 
-export function addTrackConfig(data) {
+export function getEventRequirementOptions(params) {
   return request({
-    url: '/track-config/add',
+    url: '/event-manage/requirement-options',
+    method: 'get',
+    params
+  })
+}
+
+export function addEventManage(data) {
+  return request({
+    url: '/event-manage/add',
     method: 'post',
     data
   })
 }
 
-export function updateTrackConfig(data) {
+export function updateEventManage(data) {
   return request({
-    url: '/track-config/update',
+    url: '/event-manage/update',
     method: 'post',
     data
   })
 }
 
-export function deleteTrackConfig(id) {
+export function deleteEventManage(id) {
   return request({
-    url: '/track-config/delete',
+    url: '/event-manage/delete',
     method: 'post',
     data: { id }
   })
 }
 
-export function getTrackConfigStatistics() {
+export function getEventManageStatistics() {
   return request({
-    url: '/track-config/statistics',
+    url: '/event-manage/statistics',
     method: 'get'
   })
 }
 
+// ===== 数据回检 =====
 export function getTrackDataList(params) {
   return request({
     url: '/track-data/list',
@@ -115,3 +125,12 @@ export function deleteApiInterface(id) {
     data: { id }
   })
 }
+
+// ===== 向后兼容旧命名 =====
+export const getTrackConfigList = getEventManageList
+export const getAllTrackConfig = getAllEventManage
+export const getTrackConfigDetail = getEventManageDetail
+export const addTrackConfig = addEventManage
+export const updateTrackConfig = updateEventManage
+export const deleteTrackConfig = deleteEventManage
+export const getTrackConfigStatistics = getEventManageStatistics

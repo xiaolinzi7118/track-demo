@@ -47,7 +47,10 @@ public class AuthInterceptor implements HandlerInterceptor {
     private boolean isWhitelisted(String uri) {
         return uri.startsWith("/api/auth/login")
                 || uri.startsWith("/api/track-data/report")
-                || uri.startsWith("/api/track-data/batch-report");
+                || uri.startsWith("/api/track-data/batch-report")
+                || uri.startsWith("/api/event-manage/all")
+                || uri.startsWith("/api/track-config/all")
+                || uri.startsWith("/api/api-interface/referenced-paths");
     }
 
     private void writeUnauthorized(HttpServletResponse response, String message) throws IOException {

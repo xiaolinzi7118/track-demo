@@ -20,7 +20,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/api/auth/login",
                         "/api/track-data/report",
-                        "/api/track-data/batch-report"
+                        "/api/track-data/batch-report",
+                        "/api/event-manage/all",
+                        "/api/track-config/all",
+                        "/api/api-interface/referenced-paths"
                 );
     }
 }

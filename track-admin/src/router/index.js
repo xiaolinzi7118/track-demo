@@ -21,10 +21,20 @@ const routes = [
         meta: { title: '仪表盘', affix: true }
       },
       {
+        path: 'event-manage',
+        name: 'EventManage',
+        component: () => import('../views/event-manage/index.vue'),
+        meta: { title: '事件管理' }
+      },
+      {
+        path: 'attribute-manage',
+        name: 'AttributeManage',
+        component: () => import('../views/attribute-manage/index.vue'),
+        meta: { title: '属性管理' }
+      },
+      {
         path: 'track-config',
-        name: 'TrackConfig',
-        component: () => import('../views/track-config/index.vue'),
-        meta: { title: '埋点配置' }
+        redirect: '/event-manage'
       },
       {
         path: 'api-interface',

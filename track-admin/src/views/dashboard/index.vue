@@ -9,7 +9,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ statistics.total || 0 }}</div>
-              <div class="stat-label">埋点配置总数</div>
+              <div class="stat-label">事件总数</div>
             </div>
           </div>
         </el-card>
@@ -22,7 +22,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ statistics.pageViewCount || 0 }}</div>
-              <div class="stat-label">页面曝光埋点</div>
+              <div class="stat-label">页面曝光事件</div>
             </div>
           </div>
         </el-card>
@@ -35,7 +35,7 @@
             </div>
             <div class="stat-info">
               <div class="stat-value">{{ statistics.clickCount || 0 }}</div>
-              <div class="stat-label">点击交互埋点</div>
+              <div class="stat-label">点击交互事件</div>
             </div>
           </div>
         </el-card>
@@ -88,7 +88,7 @@
         <el-col :span="6">
           <div class="entry-item" @click="goToConfig">
             <el-icon class="entry-icon"><Setting /></el-icon>
-            <span>埋点配置管理</span>
+            <span>事件管理</span>
           </div>
         </el-col>
         <el-col :span="6">
@@ -117,7 +117,7 @@
 <script setup>
 import { onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
-import { getTrackConfigStatistics, getTrackDataStatistics, getTrackDataTrend } from '../../api/track'
+import { getEventManageStatistics, getTrackDataStatistics, getTrackDataTrend } from '../../api/track'
 
 const router = useRouter()
 
@@ -128,7 +128,7 @@ const trendData = reactive([])
 const fetchData = async () => {
   try {
     const [configRes, dataRes, trendRes] = await Promise.all([
-      getTrackConfigStatistics(),
+      getEventManageStatistics(),
       getTrackDataStatistics(),
       getTrackDataTrend()
     ])
@@ -148,7 +148,7 @@ const fetchData = async () => {
 }
 
 const goToConfig = () => {
-  router.push('/track-config')
+  router.push('/event-manage')
 }
 
 const goToData = () => {
