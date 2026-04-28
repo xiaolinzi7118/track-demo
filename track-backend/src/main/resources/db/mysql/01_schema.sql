@@ -54,9 +54,7 @@ CREATE TABLE IF NOT EXISTS sys_user_role (
     role_id BIGINT NOT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_sys_user_role (user_id, role_id),
-    KEY idx_sys_user_role_role_id (role_id),
-    CONSTRAINT fk_sys_user_role_user FOREIGN KEY (user_id) REFERENCES sys_user (id) ON DELETE CASCADE,
-    CONSTRAINT fk_sys_user_role_role FOREIGN KEY (role_id) REFERENCES sys_role (id) ON DELETE CASCADE
+    KEY idx_sys_user_role_role_id (role_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS sys_role_menu (
@@ -65,9 +63,7 @@ CREATE TABLE IF NOT EXISTS sys_role_menu (
     menu_id BIGINT NOT NULL,
     PRIMARY KEY (id),
     UNIQUE KEY uk_sys_role_menu (role_id, menu_id),
-    KEY idx_sys_role_menu_menu_id (menu_id),
-    CONSTRAINT fk_sys_role_menu_role FOREIGN KEY (role_id) REFERENCES sys_role (id) ON DELETE CASCADE,
-    CONSTRAINT fk_sys_role_menu_menu FOREIGN KEY (menu_id) REFERENCES sys_menu (id) ON DELETE CASCADE
+    KEY idx_sys_role_menu_menu_id (menu_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS track_config (
@@ -241,8 +237,7 @@ CREATE TABLE IF NOT EXISTS dict_param_item (
     update_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     PRIMARY KEY (id),
     KEY idx_dict_param_item_param_status (param_id, status),
-    KEY idx_dict_param_item_param (param_id),
-    CONSTRAINT fk_dict_param_item_param_id FOREIGN KEY (param_id) REFERENCES dict_param (param_id)
+    KEY idx_dict_param_item_param (param_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS dict_id_sequence (
@@ -260,7 +255,5 @@ CREATE TABLE IF NOT EXISTS sys_user_data_dept (
     create_time DATETIME(3) DEFAULT CURRENT_TIMESTAMP(3),
     PRIMARY KEY (id),
     UNIQUE KEY uk_sys_user_data_dept (user_id, dept_id),
-    KEY idx_sys_user_data_dept_dept_id (dept_id),
-    CONSTRAINT fk_sys_user_data_dept_user FOREIGN KEY (user_id) REFERENCES sys_user (id) ON DELETE CASCADE,
-    CONSTRAINT fk_sys_user_data_dept_dept FOREIGN KEY (dept_id) REFERENCES dict_param_item (id)
+    KEY idx_sys_user_data_dept_dept_id (dept_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

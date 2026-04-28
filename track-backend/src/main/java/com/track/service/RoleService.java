@@ -6,10 +6,12 @@ import com.track.dto.RoleMenuItemResponse;
 import com.track.entity.Menu;
 import com.track.entity.Role;
 import com.track.entity.RoleMenu;
+import com.track.entity.User;
 import com.track.entity.UserRole;
 import com.track.repository.MenuRepository;
 import com.track.repository.RoleMenuRepository;
 import com.track.repository.RoleRepository;
+import com.track.repository.UserRepository;
 import com.track.repository.UserRoleRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
@@ -20,8 +22,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,6 +39,9 @@ public class RoleService {
 
     @Autowired
     private UserRoleRepository userRoleRepository;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private MenuRepository menuRepository;
@@ -80,18 +87,66 @@ public class RoleService {
         return Result.success(existing);
     }
 
+    @Transactional
     public Result<Void> delete(Long id) {
         Role role = roleRepository.findById(id).orElse(null);
         if (role == null) {
-            return Result.error("角色不存在");
+            return Result.error("Role does not exist");
         }
         if ("admin".equals(role.getRoleCode())) {
-            return Result.error("不能删除管理员角色");
+            return Result.error("Admin role cannot be deleted");
         }
 
-        List<UserRole> users = userRoleRepository.findByRoleId(id);
-        if (!users.isEmpty()) {
-            return Result.error("该角色下有用户，不能删除");
+        List<UserRole> userRelations = userRoleRepository.findByRoleId(id);
+        if (!userRelations.isEmpty()) {
+            Set<Long> referencedUserIds = userRelations.stream()
+                    .map(UserRole::getUserId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            Set<Long> existingUserIds = referencedUserIds.isEmpty()
+                    ? new HashSet<>()
+                    : userRepository.findAllById(referencedUserIds).stream()
+                    .map(User::getId)
+                    .collect(Collectors.toSet());
+
+            List<UserRole> orphanRelations = userRelations.stream()
+                    .filter(ur -> ur.getUserId() == null || !existingUserIds.contains(ur.getUserId()))
+                    .collect(Collectors.toList());
+            if (!orphanRelations.isEmpty()) {
+                userRoleRepository.deleteAllInBatch(orphanRelations);
+            }
+
+            boolean hasActiveUsers = userRelations.stream()
+                    .anyMatch(ur -> ur.getUserId() != null && existingUserIds.contains(ur.getUserId()));
+            if (hasActiveUsers) {
+                return Result.error("Role is still assigned to users");
+            }
+
+            userRoleRepository.deleteByRoleId(id);
+        }
+
+        List<RoleMenu> roleMenus = roleMenuRepository.findByRoleId(id);
+        if (!roleMenus.isEmpty()) {
+            Set<Long> referencedMenuIds = roleMenus.stream()
+                    .map(RoleMenu::getMenuId)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
+            Set<Long> existingMenuIds = referencedMenuIds.isEmpty()
+                    ? new HashSet<>()
+                    : menuRepository.findAllById(referencedMenuIds).stream()
+                    .map(Menu::getId)
+                    .collect(Collectors.toSet());
+            List<RoleMenu> orphanRoleMenus = roleMenus.stream()
+                    .filter(rm -> rm.getMenuId() == null || !existingMenuIds.contains(rm.getMenuId()))
+                    .collect(Collectors.toList());
+            if (!orphanRoleMenus.isEmpty()) {
+                roleMenuRepository.deleteAllInBatch(orphanRoleMenus);
+            }
+        }
+
+        List<UserRole> remainingUsers = userRoleRepository.findByRoleId(id);
+        if (!remainingUsers.isEmpty()) {
+            return Result.error("Role is still assigned to users");
         }
 
         roleMenuRepository.deleteByRoleId(id);
@@ -128,6 +183,18 @@ public class RoleService {
         List<Long> distinctMenuIds = menuIds == null
                 ? java.util.Collections.emptyList()
                 : menuIds.stream().filter(Objects::nonNull).distinct().collect(Collectors.toList());
+
+        if (!distinctMenuIds.isEmpty()) {
+            Set<Long> existingMenuIds = menuRepository.findAllById(distinctMenuIds).stream()
+                    .map(Menu::getId)
+                    .collect(Collectors.toSet());
+            List<Long> invalidMenuIds = distinctMenuIds.stream()
+                    .filter(menuId -> !existingMenuIds.contains(menuId))
+                    .collect(Collectors.toList());
+            if (!invalidMenuIds.isEmpty()) {
+                return Result.error("Menu does not exist: " + invalidMenuIds.get(0));
+            }
+        }
 
         roleMenuRepository.deleteByRoleId(roleId);
         // Force delete SQL execution before insert SQL in the same transaction.

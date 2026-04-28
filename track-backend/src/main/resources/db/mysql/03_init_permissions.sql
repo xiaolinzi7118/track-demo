@@ -1,4 +1,28 @@
-﻿START TRANSACTION;
+START TRANSACTION;
+
+-- 外键关闭场景：先清理孤儿关联数据，避免初始化反复执行后累积脏数据
+DELETE ur
+FROM sys_user_role ur
+LEFT JOIN sys_user u ON ur.user_id = u.id
+LEFT JOIN sys_role r ON ur.role_id = r.id
+WHERE u.id IS NULL OR r.id IS NULL;
+
+DELETE rm
+FROM sys_role_menu rm
+LEFT JOIN sys_role r ON rm.role_id = r.id
+LEFT JOIN sys_menu m ON rm.menu_id = m.id
+WHERE r.id IS NULL OR m.id IS NULL;
+
+DELETE sud
+FROM sys_user_data_dept sud
+LEFT JOIN sys_user u ON sud.user_id = u.id
+LEFT JOIN dict_param_item dpi ON sud.dept_id = dpi.id
+WHERE u.id IS NULL OR dpi.id IS NULL;
+
+DELETE dpi
+FROM dict_param_item dpi
+LEFT JOIN dict_param dp ON dpi.param_id = dp.param_id
+WHERE dp.param_id IS NULL;
 
 DELETE rm
 FROM sys_role_menu rm
