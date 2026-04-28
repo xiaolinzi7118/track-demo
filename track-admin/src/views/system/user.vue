@@ -22,8 +22,8 @@
             </el-space>
           </template>
         </el-table-column>
-        <el-table-column prop="primaryDeptName" label="主部门" width="150" />
-        <el-table-column label="数据部门" min-width="220">
+        <el-table-column prop="primaryDeptName" label="所属部门" width="150" />
+        <el-table-column label="数据权限" min-width="220">
           <template #default="{ row }">
             <el-space wrap>
               <el-tag
@@ -105,8 +105,8 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="主部门">
-          <el-select v-model="userForm.primaryDeptId" placeholder="请选择主部门" style="width: 100%">
+        <el-form-item label="所属部门">
+          <el-select v-model="userForm.primaryDeptId" placeholder="请选择所属部门" style="width: 100%">
             <el-option
               v-for="dept in primaryDeptOptions"
               :key="dept.id"
@@ -115,12 +115,12 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="数据部门">
+        <el-form-item label="数据权限">
           <el-select
             v-model="userForm.dataDeptIds"
             multiple
             collapse-tags
-            placeholder="请选择数据部门"
+            placeholder="请选择数据权限"
             style="width: 100%"
           >
             <el-option
@@ -302,7 +302,7 @@ const submitUser = async () => {
     return
   }
   if (!userForm.primaryDeptId) {
-    ElMessage.warning('请选择主部门')
+    ElMessage.warning('请选择所属部门')
     return
   }
 
@@ -377,18 +377,6 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
 }
-
-watch(
-  () => [userForm.roleIds, deptOptions.value],
-  () => {
-    if (!userForm.primaryDeptId) return
-    const exists = primaryDeptOptions.value.some(dept => dept.id === userForm.primaryDeptId)
-    if (!exists) {
-      userForm.primaryDeptId = null
-    }
-  },
-  { deep: true }
-)
 
 .pagination {
   display: flex;

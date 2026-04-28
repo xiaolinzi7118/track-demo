@@ -51,7 +51,7 @@
                     v-model="row.extraAttr"
                     :disabled="isViewMode"
                     maxlength="64"
-                    placeholder="请输入附加属性"
+                    placeholder=""
                   />
                 </template>
               </el-table-column>
