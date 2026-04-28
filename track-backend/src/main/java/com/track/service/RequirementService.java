@@ -53,7 +53,7 @@ public class RequirementService {
     private static final DateTimeFormatter REQUIREMENT_ID_DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyyMMdd");
 
     private static final String BUSINESS_LINE_PARAM_ID = "DICT2026042200000001";
-    private static final String DEV_DEPT_EXTRA_ATTR = "开发";
+    private static final String DEV_DEPT_EXTRA_ATTR = "\u5f00\u53d1";
 
     private static final Set<String> VALID_PRIORITIES = new HashSet<>(Arrays.asList("P0", "P1", "P2"));
     private static final Set<String> VALID_SORT_FIELDS = new HashSet<>(Arrays.asList("priority", "createTime", "updateTime"));
@@ -67,13 +67,13 @@ public class RequirementService {
     private static final Map<String, String> STATUS_NAME_MAP = new LinkedHashMap<>();
 
     static {
-        STATUS_NAME_MAP.put(STATUS_PENDING_REVIEW, "待审核");
-        STATUS_NAME_MAP.put(STATUS_SCHEDULING, "排期中");
-        STATUS_NAME_MAP.put(STATUS_DEVELOPING, "开发中");
-        STATUS_NAME_MAP.put(STATUS_TESTING, "测试中");
-        STATUS_NAME_MAP.put(STATUS_ONLINE, "已上线");
-        STATUS_NAME_MAP.put(STATUS_OFFLINE, "已下线");
-        STATUS_NAME_MAP.put(STATUS_REJECTED, "审核不通过");
+        STATUS_NAME_MAP.put(STATUS_PENDING_REVIEW, "Pending Review");
+        STATUS_NAME_MAP.put(STATUS_SCHEDULING, "Scheduling");
+        STATUS_NAME_MAP.put(STATUS_DEVELOPING, "Developing");
+        STATUS_NAME_MAP.put(STATUS_TESTING, "Testing");
+        STATUS_NAME_MAP.put(STATUS_ONLINE, "Online");
+        STATUS_NAME_MAP.put(STATUS_OFFLINE, "Offline");
+        STATUS_NAME_MAP.put(STATUS_REJECTED, "Rejected");
     }
 
     @Autowired
@@ -96,6 +96,9 @@ public class RequirementService {
 
     @Autowired
     private PermissionChecker permissionChecker;
+
+    @Autowired
+    private DataPermissionService dataPermissionService;
 
     public Result<Page<TrackRequirement>> list(String title,
                                                String statusListText,
@@ -128,8 +131,19 @@ public class RequirementService {
         final List<String> statusList = parseStatusList(statusListText);
         Pageable pageable = PageRequest.of(safePageNum - 1, safePageSize);
 
+        User currentUser = getCurrentUser();
+        Long currentUserId = currentUser == null ? permissionChecker.getCurrentUserId() : currentUser.getId();
+        Long currentUserPrimaryDeptId = currentUser == null ? null : currentUser.getPrimaryDeptId();
+        DataPermissionService.DataScope scope = currentScope();
+        boolean admin = isAdmin();
+        boolean developer = !scope.isAllData() && !admin && isDeveloper();
+        Set<Long> visibleProposerIds = resolveVisibleProposerIds(scope);
+
         Page<TrackRequirement> page = trackRequirementRepository.findAll((root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
+            if (!appendVisibilityPredicates(predicates, root, cb, scope, visibleProposerIds, developer, currentUserPrimaryDeptId)) {
+                return cb.disjunction();
+            }
             if (finalTitle != null) {
                 predicates.add(cb.like(root.get("title"), "%" + finalTitle + "%"));
             }
@@ -155,11 +169,6 @@ public class RequirementService {
             return cb.and(predicates.toArray(new Predicate[0]));
         }, pageable);
 
-        User currentUser = getCurrentUser();
-        Long currentUserId = currentUser == null ? permissionChecker.getCurrentUserId() : currentUser.getId();
-        Long currentUserPrimaryDeptId = currentUser == null ? null : currentUser.getPrimaryDeptId();
-        boolean admin = isAdmin();
-        boolean developer = !admin && isDeveloper();
         for (TrackRequirement requirement : page.getContent()) {
             requirement.setAvailableActions(buildAvailableActions(
                     requirement, currentUserId, currentUserPrimaryDeptId, admin, developer
@@ -182,8 +191,13 @@ public class RequirementService {
         User currentUser = getCurrentUser();
         Long currentUserId = currentUser == null ? permissionChecker.getCurrentUserId() : currentUser.getId();
         Long currentUserPrimaryDeptId = currentUser == null ? null : currentUser.getPrimaryDeptId();
+        DataPermissionService.DataScope scope = currentScope();
         boolean admin = isAdmin();
-        boolean developer = !admin && isDeveloper();
+        boolean developer = !scope.isAllData() && !admin && isDeveloper();
+        Set<Long> visibleProposerIds = resolveVisibleProposerIds(scope);
+        if (!canViewRequirement(requirement, scope, visibleProposerIds, developer, currentUserPrimaryDeptId)) {
+            return Result.error("No permission to access this requirement");
+        }
         requirement.setAvailableActions(buildAvailableActions(
                 requirement, currentUserId, currentUserPrimaryDeptId, admin, developer
         ));
@@ -233,7 +247,7 @@ public class RequirementService {
         requirement.setUpdateTime(now);
 
         trackRequirementRepository.save(requirement);
-        writeLog(requirement.getRequirementId(), LOG_ACTION_CREATE, null, STATUS_PENDING_REVIEW, "创建需求", currentUser, now);
+        writeLog(requirement.getRequirementId(), LOG_ACTION_CREATE, null, STATUS_PENDING_REVIEW, "Create requirement", currentUser, now);
         return Result.success(requirement);
     }
 
@@ -263,6 +277,12 @@ public class RequirementService {
         Long currentUserPrimaryDeptId = currentUser.getPrimaryDeptId();
         boolean admin = isAdmin();
         boolean developer = !admin && isDeveloper();
+        DataPermissionService.DataScope scope = currentScope();
+        boolean scopedDeveloper = !scope.isAllData() && developer;
+        Set<Long> visibleProposerIds = resolveVisibleProposerIds(scope);
+        if (!canViewRequirement(requirement, scope, visibleProposerIds, scopedDeveloper, currentUserPrimaryDeptId)) {
+            return Result.error("No permission to access this requirement");
+        }
 
         List<TrackRequirementAction> availableActions = buildAvailableActions(
                 requirement, currentUserId, currentUserPrimaryDeptId, admin, developer
@@ -310,7 +330,13 @@ public class RequirementService {
         if (currentUser == null) {
             return Result.error(401, "User not found");
         }
+        DataPermissionService.DataScope scope = currentScope();
         boolean admin = isAdmin();
+        boolean developer = !scope.isAllData() && !admin && isDeveloper();
+        Set<Long> visibleProposerIds = resolveVisibleProposerIds(scope);
+        if (!canViewRequirement(requirement, scope, visibleProposerIds, developer, currentUser.getPrimaryDeptId())) {
+            return Result.error("No permission to access this requirement");
+        }
         if (!admin && !Objects.equals(requirement.getProposerId(), currentUser.getId())) {
             return Result.error("Only admin or proposer can resubmit");
         }
@@ -348,9 +374,9 @@ public class RequirementService {
         requirement.setUpdateTime(now);
         trackRequirementRepository.save(requirement);
 
-        writeLog(requirement.getRequirementId(), LOG_ACTION_EDIT_RESUBMIT, STATUS_REJECTED, STATUS_PENDING_REVIEW, "编辑重新提交", currentUser, now);
+        writeLog(requirement.getRequirementId(), LOG_ACTION_EDIT_RESUBMIT, STATUS_REJECTED, STATUS_PENDING_REVIEW, "Edit and resubmit", currentUser, now);
 
-        boolean developer = !admin && isDeveloper();
+        developer = !scope.isAllData() && !admin && isDeveloper();
         requirement.setAvailableActions(buildAvailableActions(
                 requirement, currentUser.getId(), currentUser.getPrimaryDeptId(), admin, developer
         ));
@@ -358,16 +384,34 @@ public class RequirementService {
     }
 
     public Result<Map<String, Object>> dashboardStatistics() {
+        User currentUser = getCurrentUser();
+        Long currentUserPrimaryDeptId = currentUser == null ? null : currentUser.getPrimaryDeptId();
+        DataPermissionService.DataScope scope = currentScope();
+        boolean admin = isAdmin();
+        boolean developer = !scope.isAllData() && !admin && isDeveloper();
+        Set<Long> visibleProposerIds = resolveVisibleProposerIds(scope);
+        List<TrackRequirement> visibleRequirements = findVisibleRequirements(
+                scope, visibleProposerIds, developer, currentUserPrimaryDeptId
+        );
+        Set<String> visibleRequirementIds = visibleRequirements.stream()
+                .map(TrackRequirement::getRequirementId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
         LocalDate today = LocalDate.now();
 
         LocalDate weekStart = today.minusDays(today.getDayOfWeek().getValue() - 1L);
         LocalDateTime weekStartTime = weekStart.atStartOfDay();
         LocalDateTime weekEndTime = weekStart.plusDays(7).atStartOfDay();
-        long weekSubmitCount = trackRequirementRepository.countByCreateTimeGreaterThanEqualAndCreateTimeLessThan(
-                weekStartTime, weekEndTime
-        );
+        long weekSubmitCount = visibleRequirements.stream()
+                .filter(item -> item.getCreateTime() != null)
+                .filter(item -> !item.getCreateTime().isBefore(weekStartTime))
+                .filter(item -> item.getCreateTime().isBefore(weekEndTime))
+                .count();
 
-        long waitDevelopCount = trackRequirementRepository.countByStatusIn(WAIT_DEVELOP_STATUSES);
+        long waitDevelopCount = visibleRequirements.stream()
+                .filter(item -> WAIT_DEVELOP_STATUSES.contains(item.getStatus()))
+                .count();
 
         LocalDate monthStart = today.withDayOfMonth(1);
         LocalDateTime monthStartTime = monthStart.atStartOfDay();
@@ -378,16 +422,18 @@ public class RequirementService {
                 );
         long monthOnlineCount = monthOnlineLogs.stream()
                 .map(TrackLog::getRequirementId)
+                .filter(visibleRequirementIds::contains)
                 .filter(Objects::nonNull)
                 .distinct()
                 .count();
 
         LocalDate alertDeadline = today.plusDays(3);
-        long alertCount = trackRequirementRepository.countAlertRequirements(
-                ALERT_EXCLUDED_STATUSES,
-                STATUS_ONLINE,
-                alertDeadline
-        );
+        long alertCount = visibleRequirements.stream()
+                .filter(item -> !ALERT_EXCLUDED_STATUSES.contains(item.getStatus()))
+                .filter(item -> !STATUS_ONLINE.equals(item.getStatus()))
+                .filter(item -> item.getExpectedOnlineDate() != null)
+                .filter(item -> !item.getExpectedOnlineDate().isAfter(alertDeadline))
+                .count();
 
         Map<String, Object> result = new HashMap<>();
         result.put("weekSubmitCount", weekSubmitCount);
@@ -398,6 +444,20 @@ public class RequirementService {
     }
 
     public Result<List<Map<String, Object>>> dashboardTrend(Integer days) {
+        User currentUser = getCurrentUser();
+        Long currentUserPrimaryDeptId = currentUser == null ? null : currentUser.getPrimaryDeptId();
+        DataPermissionService.DataScope scope = currentScope();
+        boolean admin = isAdmin();
+        boolean developer = !scope.isAllData() && !admin && isDeveloper();
+        Set<Long> visibleProposerIds = resolveVisibleProposerIds(scope);
+        List<TrackRequirement> visibleRequirements = findVisibleRequirements(
+                scope, visibleProposerIds, developer, currentUserPrimaryDeptId
+        );
+        Set<String> visibleRequirementIds = visibleRequirements.stream()
+                .map(TrackRequirement::getRequirementId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
         int rangeDays = (days != null && days == 30) ? 30 : 7;
         LocalDate endDate = LocalDate.now();
         LocalDate startDate = endDate.minusDays(rangeDays - 1L);
@@ -415,8 +475,11 @@ public class RequirementService {
             trendMap.put(date.toString(), item);
         }
 
-        List<TrackRequirement> newRequirements = trackRequirementRepository
-                .findByCreateTimeGreaterThanEqualAndCreateTimeLessThan(startTime, endTime);
+        List<TrackRequirement> newRequirements = visibleRequirements.stream()
+                .filter(item -> item.getCreateTime() != null)
+                .filter(item -> !item.getCreateTime().isBefore(startTime))
+                .filter(item -> item.getCreateTime().isBefore(endTime))
+                .collect(Collectors.toList());
         for (TrackRequirement requirement : newRequirements) {
             if (requirement.getCreateTime() == null) {
                 continue;
@@ -434,6 +497,9 @@ public class RequirementService {
         );
         for (TrackLog log : onlineLogs) {
             if (log.getOperateTime() == null) {
+                continue;
+            }
+            if (!visibleRequirementIds.contains(log.getRequirementId())) {
                 continue;
             }
             String dateKey = log.getOperateTime().toLocalDate().toString();
@@ -510,7 +576,7 @@ public class RequirementService {
         if (STATUS_REJECTED.equals(status) && (admin || Objects.equals(requirement.getProposerId(), currentUserId))) {
             TrackRequirementAction action = new TrackRequirementAction();
             action.setActionType(ACTION_TYPE_EDIT);
-            action.setLabel("编辑");
+            action.setLabel("Edit");
             action.setNeedOpinion(false);
             actions.add(action);
             return actions;
@@ -582,7 +648,7 @@ public class RequirementService {
         action.setActionType(ACTION_TYPE_CHANGE_STATUS);
         action.setTargetStatus(targetStatus);
         action.setTargetStatusName(STATUS_NAME_MAP.get(targetStatus));
-        action.setLabel("变更为" + STATUS_NAME_MAP.get(targetStatus));
+        action.setLabel("Change to " + STATUS_NAME_MAP.get(targetStatus));
         action.setNeedOpinion(needOpinion);
         actions.add(action);
     }
@@ -744,6 +810,77 @@ public class RequirementService {
         }
         DictParamItem dept = dictParamItemRepository.findById(user.getPrimaryDeptId()).orElse(null);
         return dept == null || dept.getItemName() == null ? "" : dept.getItemName();
+    }
+
+    private DataPermissionService.DataScope currentScope() {
+        Long userId = permissionChecker.getCurrentUserId();
+        return dataPermissionService.getDataScope(userId);
+    }
+
+    private Set<Long> resolveVisibleProposerIds(DataPermissionService.DataScope scope) {
+        if (scope.isAllData()) {
+            return new LinkedHashSet<>();
+        }
+        if (scope.getDeptIds().isEmpty()) {
+            return new LinkedHashSet<>();
+        }
+        return userRepository.findIdsByPrimaryDeptIdIn(scope.getDeptIds()).stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private boolean appendVisibilityPredicates(List<Predicate> predicates,
+                                               javax.persistence.criteria.Root<TrackRequirement> root,
+                                               javax.persistence.criteria.CriteriaBuilder cb,
+                                               DataPermissionService.DataScope scope,
+                                               Set<Long> visibleProposerIds,
+                                               boolean developer,
+                                               Long currentUserPrimaryDeptId) {
+        if (developer) {
+            if (currentUserPrimaryDeptId == null) {
+                return false;
+            }
+            predicates.add(cb.equal(root.get("devTeamDeptId"), currentUserPrimaryDeptId));
+            return true;
+        }
+
+        if (!scope.isAllData()) {
+            if (visibleProposerIds.isEmpty()) {
+                return false;
+            }
+            predicates.add(root.get("proposerId").in(visibleProposerIds));
+        }
+        return true;
+    }
+
+    private boolean canViewRequirement(TrackRequirement requirement,
+                                       DataPermissionService.DataScope scope,
+                                       Set<Long> visibleProposerIds,
+                                       boolean developer,
+                                       Long currentUserPrimaryDeptId) {
+        if (requirement == null) {
+            return false;
+        }
+        if (developer) {
+            return Objects.equals(requirement.getDevTeamDeptId(), currentUserPrimaryDeptId);
+        }
+        if (!scope.isAllData() && (requirement.getProposerId() == null || !visibleProposerIds.contains(requirement.getProposerId()))) {
+            return false;
+        }
+        return true;
+    }
+
+    private List<TrackRequirement> findVisibleRequirements(DataPermissionService.DataScope scope,
+                                                           Set<Long> visibleProposerIds,
+                                                           boolean developer,
+                                                           Long currentUserPrimaryDeptId) {
+        return trackRequirementRepository.findAll((root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            if (!appendVisibilityPredicates(predicates, root, cb, scope, visibleProposerIds, developer, currentUserPrimaryDeptId)) {
+                return cb.disjunction();
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        });
     }
 
     private boolean isAdmin() {

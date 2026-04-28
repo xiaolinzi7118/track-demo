@@ -43,13 +43,13 @@ public class TrackConfigService {
     private static final Map<String, String> REQUIREMENT_STATUS_LABELS = new HashMap<String, String>();
 
     static {
-        REQUIREMENT_STATUS_LABELS.put("PENDING_REVIEW", "待审核");
-        REQUIREMENT_STATUS_LABELS.put("SCHEDULING", "排期中");
-        REQUIREMENT_STATUS_LABELS.put("DEVELOPING", "开发中");
-        REQUIREMENT_STATUS_LABELS.put("TESTING", "测试中");
-        REQUIREMENT_STATUS_LABELS.put("ONLINE", "已上线");
-        REQUIREMENT_STATUS_LABELS.put("OFFLINE", "已下线");
-        REQUIREMENT_STATUS_LABELS.put("REJECTED", "审核不通过");
+        REQUIREMENT_STATUS_LABELS.put("PENDING_REVIEW", "Pending Review");
+        REQUIREMENT_STATUS_LABELS.put("SCHEDULING", "Scheduling");
+        REQUIREMENT_STATUS_LABELS.put("DEVELOPING", "Developing");
+        REQUIREMENT_STATUS_LABELS.put("TESTING", "Testing");
+        REQUIREMENT_STATUS_LABELS.put("ONLINE", "Online");
+        REQUIREMENT_STATUS_LABELS.put("OFFLINE", "Offline");
+        REQUIREMENT_STATUS_LABELS.put("REJECTED", "Rejected");
     }
 
     @Autowired
@@ -80,6 +80,11 @@ public class TrackConfigService {
 
     public Result<Page<TrackConfig>> list(String eventType, String keyword, Integer pageNum, Integer pageSize) {
         DataPermissionService.DataScope scope = currentScope();
+        User currentUser = getCurrentUser();
+        Long currentUserPrimaryDeptId = currentUser == null ? null : currentUser.getPrimaryDeptId();
+        boolean admin = isAdmin();
+        boolean developer = !scope.isAllData() && !admin && isDeveloper();
+        Set<String> visibleRequirementIds = resolveVisibleRequirementIds(scope, developer, currentUserPrimaryDeptId);
         Pageable pageable = PageRequest.of(
                 safePageNumber(pageNum) - 1,
                 safePageSize(pageSize),
@@ -108,6 +113,12 @@ public class TrackConfigService {
                     return cb.disjunction();
                 }
                 predicates.add(root.get("deptId").in(scope.getDeptIds()));
+            }
+            if (needRestrictByRequirement(scope, developer)) {
+                if (visibleRequirementIds.isEmpty()) {
+                    return cb.disjunction();
+                }
+                predicates.add(root.get("requirementId").in(visibleRequirementIds));
             }
 
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -157,10 +168,15 @@ public class TrackConfigService {
     public Result<TrackConfig> detail(Long id) {
         TrackConfig config = trackConfigRepository.findById(id).orElse(null);
         if (config == null) {
-            return Result.error("事件不存在");
+            return Result.error("Event does not exist");
         }
         if (!canAccess(config.getDeptId(), currentScope())) {
-            return Result.error("无权访问该记录");
+            return Result.error("No permission to access this record");
+        }
+        TrackRequirement requirement = config.getRequirementId() == null ? null
+                : trackRequirementRepository.findByRequirementId(config.getRequirementId());
+        if (requirement == null || !canAccessRequirement(requirement)) {
+            return Result.error("No permission to access this record");
         }
         hydrateRequirementInfo(Collections.singletonList(config));
         return Result.success(config);
@@ -168,7 +184,7 @@ public class TrackConfigService {
 
     public Result<TrackConfig> add(TrackConfig request) {
         if (request == null) {
-            return Result.error("请求体不能为空");
+            return Result.error("Request body cannot be null");
         }
 
         String baseValidation = validateEventBaseFields(request);
@@ -178,18 +194,18 @@ public class TrackConfigService {
 
         Long deptId = resolveWriteDeptId(request.getDeptId());
         if (deptId == null) {
-            return Result.error("未找到可写入的数据归属部门");
+            return Result.error("No writable data department found");
         }
 
         String urlPattern = normalizeUrlPattern(request.getUrlPattern());
         if (request.getStatus() != null && request.getStatus() == 1
                 && !isEventCodeUrlUnique(request.getEventCode(), urlPattern, null)) {
-            return Result.error("事件编码与生效页面URL组合在启用数据中必须唯一");
+            return Result.error("eventCode + urlPattern must be unique among enabled records");
         }
 
         String normalizedParams = normalizeAndValidateParams(request.getParams(), request.getEventType());
         if (normalizedParams == null) {
-            return Result.error("关联属性参数格式不正确");
+            return Result.error("Associated attribute params format is invalid");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -214,15 +230,20 @@ public class TrackConfigService {
 
     public Result<TrackConfig> update(TrackConfig request) {
         if (request == null || request.getId() == null) {
-            return Result.error("事件ID不能为空");
+            return Result.error("Event id is required");
         }
 
         TrackConfig existing = trackConfigRepository.findById(request.getId()).orElse(null);
         if (existing == null) {
-            return Result.error("事件不存在");
+            return Result.error("Event does not exist");
         }
         if (!canAccess(existing.getDeptId(), currentScope())) {
-            return Result.error("无权修改该记录");
+            return Result.error("No permission to modify this record");
+        }
+        TrackRequirement existingRequirement = existing.getRequirementId() == null ? null
+                : trackRequirementRepository.findByRequirementId(existing.getRequirementId());
+        if (existingRequirement == null || !canAccessRequirement(existingRequirement)) {
+            return Result.error("No permission to modify this record");
         }
 
         String baseValidation = validateEventBaseFields(request);
@@ -235,18 +256,18 @@ public class TrackConfigService {
             deptId = existing.getDeptId();
         }
         if (deptId == null) {
-            return Result.error("未找到可写入的数据归属部门");
+            return Result.error("No writable data department found");
         }
 
         String urlPattern = normalizeUrlPattern(request.getUrlPattern());
         if (request.getStatus() != null && request.getStatus() == 1
                 && !isEventCodeUrlUnique(request.getEventCode(), urlPattern, request.getId())) {
-            return Result.error("事件编码与生效页面URL组合在启用数据中必须唯一");
+            return Result.error("eventCode + urlPattern must be unique among enabled records");
         }
 
         String normalizedParams = normalizeAndValidateParams(request.getParams(), request.getEventType());
         if (normalizedParams == null) {
-            return Result.error("关联属性参数格式不正确");
+            return Result.error("Associated attribute params format is invalid");
         }
 
         existing.setEventName(trim(request.getEventName()));
@@ -269,10 +290,15 @@ public class TrackConfigService {
     public Result<Void> delete(Long id) {
         TrackConfig existing = trackConfigRepository.findById(id).orElse(null);
         if (existing == null) {
-            return Result.error("事件不存在");
+            return Result.error("Event does not exist");
         }
         if (!canAccess(existing.getDeptId(), currentScope())) {
-            return Result.error("无权删除该记录");
+            return Result.error("No permission to delete this record");
+        }
+        TrackRequirement existingRequirement = existing.getRequirementId() == null ? null
+                : trackRequirementRepository.findByRequirementId(existing.getRequirementId());
+        if (existingRequirement == null || !canAccessRequirement(existingRequirement)) {
+            return Result.error("No permission to delete this record");
         }
         trackConfigRepository.deleteById(id);
         return Result.success();
@@ -280,6 +306,11 @@ public class TrackConfigService {
 
     public Result<Map<String, Object>> statistics() {
         DataPermissionService.DataScope scope = currentScope();
+        User currentUser = getCurrentUser();
+        Long currentUserPrimaryDeptId = currentUser == null ? null : currentUser.getPrimaryDeptId();
+        boolean admin = isAdmin();
+        boolean developer = !scope.isAllData() && !admin && isDeveloper();
+        Set<String> visibleRequirementIds = resolveVisibleRequirementIds(scope, developer, currentUserPrimaryDeptId);
         List<TrackConfig> all;
         if (scope.isAllData()) {
             all = trackConfigRepository.findAll();
@@ -287,6 +318,16 @@ public class TrackConfigService {
             all = new ArrayList<TrackConfig>();
         } else {
             all = trackConfigRepository.findAll((root, query, cb) -> root.get("deptId").in(scope.getDeptIds()));
+        }
+        if (needRestrictByRequirement(scope, developer)) {
+            if (visibleRequirementIds.isEmpty()) {
+                all = new ArrayList<TrackConfig>();
+            } else {
+                Set<String> finalVisibleRequirementIds = visibleRequirementIds;
+                all = all.stream()
+                        .filter(item -> item.getRequirementId() != null && finalVisibleRequirementIds.contains(item.getRequirementId()))
+                        .collect(Collectors.toList());
+            }
         }
 
         Map<String, Object> result = new HashMap<String, Object>();
@@ -299,9 +340,18 @@ public class TrackConfigService {
     }
 
     public Result<List<Map<String, Object>>> requirementOptions(String keyword) {
+        DataPermissionService.DataScope scope = currentScope();
+        User currentUser = getCurrentUser();
+        Long currentUserPrimaryDeptId = currentUser == null ? null : currentUser.getPrimaryDeptId();
+        boolean admin = isAdmin();
+        boolean developer = !scope.isAllData() && !admin && isDeveloper();
+        Set<Long> visibleProposerIds = resolveVisibleProposerIds(scope);
         final String finalKeyword = trim(keyword);
         List<TrackRequirement> requirements = trackRequirementRepository.findAll((root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<Predicate>();
+            if (!appendRequirementVisibilityPredicates(predicates, root, cb, scope, visibleProposerIds, developer, currentUserPrimaryDeptId)) {
+                return cb.disjunction();
+            }
             predicates.add(root.get("status").in(SELECTABLE_REQUIREMENT_STATUS));
             if (finalKeyword != null) {
                 predicates.add(cb.like(root.get("title"), "%" + finalKeyword + "%"));
@@ -354,35 +404,38 @@ public class TrackConfigService {
     private String validateEventBaseFields(TrackConfig request) {
         String eventName = trim(request.getEventName());
         if (eventName == null) {
-            return "事件名称不能为空";
+            return "Event name is required";
         }
         String eventCode = trim(request.getEventCode());
         if (eventCode == null) {
-            return "事件编码不能为空";
+            return "Event code is required";
         }
         String eventType = trim(request.getEventType());
         if (eventType == null || !VALID_EVENT_TYPES.contains(eventType)) {
-            return "事件类型不正确";
+            return "Event type is invalid";
         }
         if (request.getStatus() == null || (request.getStatus() != 0 && request.getStatus() != 1)) {
-            return "状态值不正确";
+            return "Status value is invalid";
         }
 
         String requirementId = trim(request.getRequirementId());
         if (requirementId == null) {
-            return "关联需求不能为空";
+            return "Requirement is required";
         }
         TrackRequirement requirement = trackRequirementRepository.findByRequirementId(requirementId);
         if (requirement == null) {
-            return "关联需求不存在";
+            return "Requirement does not exist";
+        }
+        if (!canAccessRequirement(requirement)) {
+            return "No permission to associate this requirement";
         }
         if (!SELECTABLE_REQUIREMENT_STATUS.contains(requirement.getStatus())) {
-            return "仅可关联排期中或开发中的需求";
+            return "Only scheduling/developing requirements can be linked";
         }
 
         String pageScreenshotFileId = trim(request.getPageScreenshotFileId());
         if (pageScreenshotFileId != null && !trackFileAssetRepository.existsByFileId(pageScreenshotFileId)) {
-            return "页面截图文件不存在";
+            return "Page screenshot file does not exist";
         }
         return null;
     }
@@ -405,10 +458,10 @@ public class TrackConfigService {
             for (Map<String, Object> row : rawList) {
                 String attributeId = trim(asString(row.get("attributeId")));
                 if (attributeId == null) {
-                    throw new RuntimeException("关联属性缺少attributeId");
+                    throw new RuntimeException("闂佺绻愰悿鍥ㄧ閸澀娌柣鎰ˉ閸嬫捁顦寸€规瓕浜禍鎼佸箞绾〖ributeId");
                 }
                 if (!seenAttributeIds.add(attributeId)) {
-                    throw new RuntimeException("关联属性不可重复: " + attributeId);
+                    throw new RuntimeException("闂佺绻愰悿鍥ㄧ閸澀娌柣鎰ˉ閸嬫捁顦辩紒妤€顦靛畷锝夘敍閻愬弶顏熸繝? " + attributeId);
                 }
                 allAttributeIds.add(attributeId);
             }
@@ -419,7 +472,7 @@ public class TrackConfigService {
 
             for (String attributeId : allAttributeIds) {
                 if (!attributeMap.containsKey(attributeId)) {
-                    throw new RuntimeException("属性不存在或已删除: " + attributeId);
+                    throw new RuntimeException("闁诲繒鍋熼崑鐐哄焵椤戭剙鍊婚悷婵嬫倵濞戞顏勶耿椤忓牆绠ｉ柡宓啫娈ラ梺鍛婂笧婵炩偓婵? " + attributeId);
                 }
             }
 
@@ -441,12 +494,12 @@ public class TrackConfigService {
                         sourceType = trim(attribute.getSourceType());
                     }
                     if (sourceType == null || !VALID_SOURCE_TYPES.contains(sourceType)) {
-                        throw new RuntimeException("个性化属性来源类型不正确: " + attribute.getAttributeName());
+                        throw new RuntimeException("婵炴垶鎼╂禍婵嬪焵椤戭剙鍟褔鎮橀悙闈涗沪闁逞屽劯閸曨剟妾峰┑鐘欏嫬濮夐悶姘煎亰瀹曞湱鈧絺鏅濋悷婵囨叏濠垫挾鎮奸柍? " + attribute.getAttributeName());
                     }
 
                     if (EVENT_TYPE_PAGE_VIEW.equals(eventType)
                             && (SOURCE_NODE_CONTENT.equals(sourceType) || SOURCE_API_DATA.equals(sourceType))) {
-                        throw new RuntimeException("页面曝光事件不支持节点内容或接口数据来源");
+                        throw new RuntimeException("page_view does not support node_content/api_data source types");
                     }
 
                     String sourceValue = trimNullable(asString(row.get("sourceValue")));
@@ -468,20 +521,20 @@ public class TrackConfigService {
                         interfaceId = null;
                     } else if (SOURCE_API_DATA.equals(sourceType)) {
                         if (interfaceId == null) {
-                            throw new RuntimeException("接口数据来源必须选择接口");
+                            throw new RuntimeException("Custom attribute source type is invalid: " + attribute.getAttributeName());
                         }
                         if (sourceValue == null) {
-                            throw new RuntimeException("接口数据来源必须填写变量路径");
+                            throw new RuntimeException("闂佽浜介崕杈亹濞戙垹鏋侀柣妤€鐗嗙粊锕傛煛婢跺牆鍔滅紒顭戝枦缁犳盯宕ㄥǎ顑藉亾韫囨梻绠欐い鎰╁灩閺呮悂鏌涘▎鎰惰€块柛锝堟閹瑰嫰顢涘杈╃嵁");
                         }
                         ApiInterface apiInterface = apiInterfaceRepository.findById(interfaceId).orElse(null);
                         if (apiInterface == null) {
-                            throw new RuntimeException("接口不存在: " + interfaceId);
+                            throw new RuntimeException("闂佽浜介崕杈亹濞戞瑧鈻旂€广儱鎳愰幗鐘绘煕? " + interfaceId);
                         }
                         interfacePath = apiInterface.getPath();
                     } else {
                         interfaceId = null;
                         if (sourceValue == null) {
-                            throw new RuntimeException("来源类型对应的变量路径/值不能为空");
+                            throw new RuntimeException("Source value is required for current sourceType");
                         }
                     }
 
@@ -534,6 +587,14 @@ public class TrackConfigService {
         return pageSize == null || pageSize < 1 ? 10 : pageSize;
     }
 
+    private User getCurrentUser() {
+        Long userId = permissionChecker.getCurrentUserId();
+        if (userId == null) {
+            return null;
+        }
+        return userRepository.findById(userId).orElse(null);
+    }
+
     private DataPermissionService.DataScope currentScope() {
         Long userId = permissionChecker.getCurrentUserId();
         return dataPermissionService.getDataScope(userId);
@@ -544,6 +605,91 @@ public class TrackConfigService {
             return true;
         }
         return deptId != null && scope.getDeptIds().contains(deptId);
+    }
+
+    private Set<Long> resolveVisibleProposerIds(DataPermissionService.DataScope scope) {
+        if (scope.isAllData()) {
+            return new LinkedHashSet<Long>();
+        }
+        if (scope.getDeptIds().isEmpty()) {
+            return new LinkedHashSet<Long>();
+        }
+        return userRepository.findIdsByPrimaryDeptIdIn(scope.getDeptIds()).stream()
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private boolean appendRequirementVisibilityPredicates(List<Predicate> predicates,
+                                                          javax.persistence.criteria.Root<TrackRequirement> root,
+                                                          javax.persistence.criteria.CriteriaBuilder cb,
+                                                          DataPermissionService.DataScope scope,
+                                                          Set<Long> visibleProposerIds,
+                                                          boolean developer,
+                                                          Long currentUserPrimaryDeptId) {
+        if (developer) {
+            if (currentUserPrimaryDeptId == null) {
+                return false;
+            }
+            predicates.add(cb.equal(root.get("devTeamDeptId"), currentUserPrimaryDeptId));
+            return true;
+        }
+
+        if (!scope.isAllData()) {
+            if (visibleProposerIds.isEmpty()) {
+                return false;
+            }
+            predicates.add(root.get("proposerId").in(visibleProposerIds));
+        }
+        return true;
+    }
+
+    private Set<String> resolveVisibleRequirementIds(DataPermissionService.DataScope scope,
+                                                     boolean developer,
+                                                     Long currentUserPrimaryDeptId) {
+        Set<Long> visibleProposerIds = resolveVisibleProposerIds(scope);
+        List<TrackRequirement> requirements = trackRequirementRepository.findAll((root, query, cb) -> {
+            List<Predicate> predicates = new ArrayList<Predicate>();
+            if (!appendRequirementVisibilityPredicates(predicates, root, cb, scope, visibleProposerIds, developer, currentUserPrimaryDeptId)) {
+                return cb.disjunction();
+            }
+            return cb.and(predicates.toArray(new Predicate[0]));
+        });
+        return requirements.stream()
+                .map(TrackRequirement::getRequirementId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private boolean canAccessRequirement(TrackRequirement requirement) {
+        if (requirement == null) {
+            return false;
+        }
+        User currentUser = getCurrentUser();
+        Long currentUserPrimaryDeptId = currentUser == null ? null : currentUser.getPrimaryDeptId();
+        DataPermissionService.DataScope scope = currentScope();
+        boolean admin = isAdmin();
+        boolean developer = !scope.isAllData() && !admin && isDeveloper();
+        Set<Long> visibleProposerIds = resolveVisibleProposerIds(scope);
+
+        if (developer) {
+            return Objects.equals(requirement.getDevTeamDeptId(), currentUserPrimaryDeptId);
+        }
+        if (!scope.isAllData() && (requirement.getProposerId() == null || !visibleProposerIds.contains(requirement.getProposerId()))) {
+            return false;
+        }
+        return true;
+    }
+
+    private boolean needRestrictByRequirement(DataPermissionService.DataScope scope, boolean developer) {
+        return developer || !scope.isAllData();
+    }
+
+    private boolean isAdmin() {
+        return permissionChecker.hasAnyRole("admin");
+    }
+
+    private boolean isDeveloper() {
+        return permissionChecker.hasAnyRole("developer");
     }
 
     private Long resolveWriteDeptId(Long requestedDeptId) {
@@ -607,5 +753,6 @@ public class TrackConfigService {
         return value.trim().isEmpty() ? null : value.trim();
     }
 }
+
 
 
