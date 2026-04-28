@@ -62,7 +62,7 @@ WHERE param_id = 'SYS_DEPT'
   AND item_code = 'DEFAULT'
   AND status = 0;
 
--- 4) 清理引用默认部门的用户主部门与数据授权
+-- 4) 清理引用默认部门的用户所属部门与数据授权
 UPDATE sys_user u
 JOIN dict_param_item d ON u.primary_dept_id = d.id
 SET u.primary_dept_id = NULL

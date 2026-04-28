@@ -316,10 +316,10 @@ public class UserController {
             return Result.success();
         }
         if (primaryDeptId == null) {
-            return Result.error("开发人员角色必须选择主部门");
+            return Result.error("开发人员角色必须选择所属部门");
         }
         if (!isDevDept(primaryDeptId)) {
-            return Result.error("开发人员角色的主部门必须是附加属性为“开发”的部门");
+            return Result.error("开发人员角色的所属部门必须是附加属性为“开发”的部门");
         }
         return Result.success();
     }
