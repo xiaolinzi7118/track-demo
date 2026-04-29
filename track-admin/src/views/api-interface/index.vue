@@ -2,8 +2,24 @@
   <el-card>
     <template #header>
       <div class="card-header">
-        <span>接口来源管理</span>
-        <el-button v-permission="'api-interface:add'" type="primary" @click="handleAdd">新增接口</el-button>
+        <span>接口管理</span>
+        <div class="header-actions">
+          <el-button
+            v-permission="'api-interface:add'"
+            :loading="importLoading"
+            @click="handleTriggerImport"
+          >
+            导入接口
+          </el-button>
+          <el-button v-permission="'api-interface:add'" type="primary" @click="handleAdd">新增接口</el-button>
+          <input
+            ref="importInputRef"
+            class="hidden-file-input"
+            type="file"
+            accept=".txt"
+            @change="handleImportChange"
+          >
+        </div>
       </div>
     </template>
 
@@ -76,14 +92,16 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getApiInterfaceList, addApiInterface, updateApiInterface, deleteApiInterface } from '../../api/track'
+import { getApiInterfaceList, addApiInterface, updateApiInterface, deleteApiInterface, importApiInterface } from '../../api/track'
 
 const tableData = ref([])
 const loading = ref(false)
+const importLoading = ref(false)
 const keyword = ref('')
 const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const importInputRef = ref(null)
 
 const dialogVisible = ref(false)
 const isEdit = ref(false)
@@ -146,6 +164,63 @@ const handleAdd = () => {
   dialogVisible.value = true
 }
 
+const handleTriggerImport = () => {
+  if (importLoading.value) return
+  if (!importInputRef.value) return
+  importInputRef.value.value = ''
+  importInputRef.value.click()
+}
+
+const renderImportFailMessage = (failList) => {
+  if (!Array.isArray(failList) || failList.length === 0) return ''
+  return failList
+    .slice(0, 10)
+    .map(item => `第${item.rowNum}条：${item.message}`)
+    .join('\n')
+}
+
+const handleImportChange = async (event) => {
+  const file = event?.target?.files?.[0]
+  if (!file) return
+  if (!file.name.toLowerCase().endsWith('.txt')) {
+    ElMessage.error('仅支持导入 .txt 文件')
+    return
+  }
+
+  importLoading.value = true
+  try {
+    const res = await importApiInterface(file)
+    if (res.code !== 200) {
+      ElMessage.error(res.message || '导入失败')
+      return
+    }
+
+    const data = res.data || {}
+    const totalCount = data.totalCount || 0
+    const successCount = data.successCount || 0
+    const failCount = data.failCount || 0
+    const failList = data.failList || []
+
+    if (failCount > 0) {
+      const failMessage = renderImportFailMessage(failList)
+      await ElMessageBox.alert(
+        `共 ${totalCount} 条，成功 ${successCount} 条，失败 ${failCount} 条。${failMessage ? `\n\n${failMessage}` : ''}`,
+        '导入结果',
+        { type: 'warning' }
+      )
+    } else {
+      ElMessage.success(`导入完成，共 ${totalCount} 条，成功 ${successCount} 条`)
+    }
+    pageNum.value = 1
+    await fetchData()
+  } finally {
+    importLoading.value = false
+    if (importInputRef.value) {
+      importInputRef.value.value = ''
+    }
+  }
+}
+
 const handleEdit = (row) => {
   resetForm()
   isEdit.value = true
@@ -204,6 +279,16 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.hidden-file-input {
+  display: none;
 }
 
 .search-form {

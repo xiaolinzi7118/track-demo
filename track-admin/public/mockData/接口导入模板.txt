@@ -1,0 +1,17 @@
+{
+  "date": 17772333,
+  "apis": [
+    {
+      "id": 1,
+      "apiName": "接口1",
+      "operationType": "/api/financial-product/list",
+      "description": ""
+    },
+    {
+      "id": 2,
+      "apiName": "接口2",
+      "operationType": "/financial-product/detail",
+      "description": ""
+    }
+  ]
+}

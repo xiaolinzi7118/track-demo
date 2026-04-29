@@ -7,4 +7,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ApiInterfaceRepository extends JpaRepository<ApiInterface, Long>, JpaSpecificationExecutor<ApiInterface> {
+    boolean existsByPath(String path);
 }

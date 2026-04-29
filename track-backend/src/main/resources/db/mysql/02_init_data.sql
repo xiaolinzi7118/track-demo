@@ -68,7 +68,7 @@ VALUES
     (35, 32, '编辑', 'attribute:edit', NULL, NULL, 3, 3, 'attribute:edit', 1, NOW(3), NOW(3)),
     (36, 32, '删除', 'attribute:delete', NULL, NULL, 4, 3, 'attribute:delete', 1, NOW(3), NOW(3)),
 
-    (8, 2, '接口来源管理', 'api-interface', '/api-interface', 'Link', 3, 2, NULL, 1, NOW(3), NOW(3)),
+    (8, 2, '接口管理', 'api-interface', '/api-interface', 'Link', 3, 2, NULL, 1, NOW(3), NOW(3)),
     (9, 8, '查看', 'api-interface:view', NULL, NULL, 1, 3, 'api-interface:view', 1, NOW(3), NOW(3)),
     (10, 8, '新增', 'api-interface:add', NULL, NULL, 2, 3, 'api-interface:add', 1, NOW(3), NOW(3)),
     (11, 8, '编辑', 'api-interface:edit', NULL, NULL, 3, 3, 'api-interface:edit', 1, NOW(3), NOW(3)),

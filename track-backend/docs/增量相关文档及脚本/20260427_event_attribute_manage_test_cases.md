@@ -21,7 +21,7 @@
 1. 已执行 `01_schema.sql + 02_init_data.sql + 03_init_permissions.sql`。  
 2. 已执行增量脚本 `20260427_event_attribute_manage.sql`。  
 3. 存在状态为 `SCHEDULING` 或 `DEVELOPING` 的需求数据。  
-4. 接口来源管理中至少存在一条接口数据。  
+4. 接口管理中至少存在一条接口数据。  
 
 ---
 

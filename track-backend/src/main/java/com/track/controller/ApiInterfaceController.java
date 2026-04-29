@@ -7,6 +7,7 @@ import com.track.service.ApiInterfaceService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -57,6 +58,12 @@ public class ApiInterfaceController {
     public Result<Void> delete(@RequestBody Map<String, Long> request) {
         permissionChecker.checkPermission("api-interface:delete");
         return apiInterfaceService.delete(request.get("id"));
+    }
+
+    @PostMapping("/import")
+    public Result<Map<String, Object>> importTxt(@RequestParam("file") MultipartFile file) {
+        permissionChecker.checkPermission("api-interface:add");
+        return apiInterfaceService.importTxt(file);
     }
 
     @GetMapping("/referenced-paths")

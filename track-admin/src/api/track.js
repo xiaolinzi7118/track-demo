@@ -86,7 +86,7 @@ export function getTrackDataTrend() {
   })
 }
 
-// ===== 接口来源管理 =====
+// ===== 接口管理 =====
 export function getApiInterfaceList(params) {
   return request({
     url: '/api-interface/list',
@@ -123,6 +123,19 @@ export function deleteApiInterface(id) {
     url: '/api-interface/delete',
     method: 'post',
     data: { id }
+  })
+}
+
+export function importApiInterface(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/api-interface/import',
+    method: 'post',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
   })
 }
 

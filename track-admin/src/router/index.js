@@ -41,7 +41,7 @@ const routes = [
         path: 'api-interface',
         name: 'ApiInterface',
         component: () => import('../views/api-interface/index.vue'),
-        meta: { title: '接口来源管理' }
+        meta: { title: '接口管理' }
       },
       {
         path: 'track-data',

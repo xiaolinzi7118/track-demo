@@ -1,6 +1,7 @@
 package com.track.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.track.common.PermissionChecker;
 import com.track.common.Result;
@@ -12,13 +13,17 @@ import com.track.repository.TrackAttributeRepository;
 import com.track.repository.TrackConfigRepository;
 import com.track.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.persistence.criteria.Predicate;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -151,6 +156,94 @@ public class ApiInterfaceService {
         return Result.success();
     }
 
+    @Transactional
+    public Result<Map<String, Object>> importTxt(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return Result.error("请选择导入文件");
+        }
+
+        String fileName = trim(file.getOriginalFilename());
+        if (fileName == null || !fileName.toLowerCase(Locale.ROOT).endsWith(".txt")) {
+            return Result.error("仅支持导入txt文件");
+        }
+
+        Long deptId = resolveWriteDeptId(null);
+        if (deptId == null) {
+            return Result.error("No writable department found");
+        }
+
+        int totalCount = 0;
+        int successCount = 0;
+        List<Map<String, Object>> failList = new ArrayList<>();
+        Set<String> importPathSet = new HashSet<>();
+
+        try {
+            String text = new String(file.getBytes(), StandardCharsets.UTF_8);
+            text = stripBom(text);
+
+            JsonNode root = objectMapper.readTree(text);
+            JsonNode apisNode = root == null ? null : root.get("apis");
+            if (apisNode == null || !apisNode.isArray()) {
+                return Result.error("导入内容缺少apis数组");
+            }
+
+            for (int i = 0; i < apisNode.size(); i++) {
+                JsonNode item = apisNode.get(i);
+                if (item == null || item.isNull()) {
+                    continue;
+                }
+                totalCount++;
+                int rowNum = i + 1;
+
+                String name = trim(readTextNode(item, "apiName"));
+                String path = trim(readTextNode(item, "operationType"));
+                String description = trimNullable(readTextNode(item, "description"));
+
+                if (name == null) {
+                    failList.add(buildImportFail(rowNum, "apiName不能为空"));
+                    continue;
+                }
+                if (path == null) {
+                    failList.add(buildImportFail(rowNum, "operationType不能为空"));
+                    continue;
+                }
+                if (importPathSet.contains(path)) {
+                    failList.add(buildImportFail(rowNum, "operationType在导入文件中重复"));
+                    continue;
+                }
+                if (apiInterfaceRepository.existsByPath(path)) {
+                    failList.add(buildImportFail(rowNum, "接口路径已存在"));
+                    continue;
+                }
+
+                ApiInterface apiInterface = new ApiInterface();
+                apiInterface.setName(name);
+                apiInterface.setPath(path);
+                apiInterface.setDescription(description);
+                apiInterface.setDeptId(deptId);
+                apiInterface.setCreateTime(LocalDateTime.now());
+                apiInterface.setUpdateTime(LocalDateTime.now());
+
+                try {
+                    apiInterfaceRepository.save(apiInterface);
+                    importPathSet.add(path);
+                    successCount++;
+                } catch (DataIntegrityViolationException e) {
+                    failList.add(buildImportFail(rowNum, "接口路径已存在"));
+                }
+            }
+        } catch (Exception e) {
+            return Result.error("解析导入文件失败: " + e.getMessage());
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("totalCount", totalCount);
+        result.put("successCount", successCount);
+        result.put("failCount", failList.size());
+        result.put("failList", failList);
+        return Result.success(result);
+    }
+
     public Result<List<String>> getReferencedInterfacePaths() {
         Set<Long> referencedIds = getReferencedInterfaceIds();
         if (referencedIds.isEmpty()) {
@@ -234,5 +327,46 @@ public class ApiInterfaceService {
         }
 
         return scope.getDeptIds().stream().findFirst().orElse(null);
+    }
+
+    private String readTextNode(JsonNode node, String fieldName) {
+        if (node == null || fieldName == null) {
+            return null;
+        }
+        JsonNode valueNode = node.get(fieldName);
+        if (valueNode == null || valueNode.isNull()) {
+            return null;
+        }
+        return valueNode.asText();
+    }
+
+    private Map<String, Object> buildImportFail(Integer rowNum, String message) {
+        Map<String, Object> fail = new LinkedHashMap<>();
+        fail.put("rowNum", rowNum);
+        fail.put("message", message);
+        return fail;
+    }
+
+    private String stripBom(String content) {
+        if (content == null || content.isEmpty()) {
+            return content;
+        }
+        return content.charAt(0) == '\uFEFF' ? content.substring(1) : content;
+    }
+
+    private String trim(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    private String trimNullable(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }
