@@ -117,7 +117,22 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="事件编码" prop="eventCode">
-              <el-input v-model="form.eventCode" placeholder="请输入事件编码" />
+              <el-select
+                v-model="form.eventCode"
+                filterable
+                allow-create
+                default-first-option
+                clearable
+                placeholder="请选择或输入事件编码"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in eventCodeOptions"
+                  :key="item.value"
+                  :label="`${item.label} (${item.value})`"
+                  :value="item.value"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -160,7 +175,22 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="生效页面URL">
-              <el-input v-model="form.urlPattern" placeholder="选填：URL正则，不填表示全页面生效" />
+              <el-select
+                v-model="form.urlPattern"
+                filterable
+                allow-create
+                default-first-option
+                clearable
+                placeholder="选填：请选择或输入URL正则，不填表示全页面生效"
+                style="width: 100%"
+              >
+                <el-option
+                  v-for="item in urlPatternOptions"
+                  :key="item.value"
+                  :label="`${item.label} (${item.value || '留空'})`"
+                  :value="item.value"
+                />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
@@ -362,10 +392,73 @@ const form = reactive({
 const paramsList = ref([])
 const interfaceOptions = ref([])
 const requirementOptions = ref([])
+const urlPatternOptions = [
+  { label: '全页面生效', value: '' },
+  { label: '登录页', value: '#/login$' },
+  { label: '首页', value: '#/$' },
+  { label: '理财页', value: '#/wealth$' },
+  { label: '生活页', value: '#/life$' },
+  { label: '我的页', value: '#/mine$' },
+  { label: '首页+理财页', value: '#/(|wealth)$' },
+  { label: '底部Tab页(首页/理财/生活/我的)', value: '#/(|wealth|life|mine)$' }
+]
+const eventCodeOptions = [
+  { value: 'tab_home', label: '底部导航-首页', region: '全局/TabBar' },
+  { value: 'tab_wealth', label: '底部导航-理财', region: '全局/TabBar' },
+  { value: 'tab_life', label: '底部导航-生活', region: '全局/TabBar' },
+  { value: 'tab_mine', label: '底部导航-我的', region: '全局/TabBar' },
+
+  { value: 'home_notification', label: '通知按钮', region: '首页/头部' },
+  { value: 'home_banner', label: 'Banner', region: '首页/Banner' },
+  { value: 'home_action_transfer', label: '快捷操作-转账汇款', region: '首页/快捷操作' },
+  { value: 'home_action_wealth', label: '快捷操作-理财产品', region: '首页/快捷操作' },
+  { value: 'home_action_creditcard', label: '快捷操作-信用卡', region: '首页/快捷操作' },
+  { value: 'home_action_loan', label: '快捷操作-贷款', region: '首页/快捷操作' },
+  { value: 'home_account_summary', label: '资产总览卡片', region: '首页/资产总览' },
+  { value: 'home_wealth_more', label: '理财推荐-更多', region: '首页/理财推荐' },
+
+  { value: 'wealth_tab_all', label: '分类Tab-全部', region: '理财页/分类Tab' },
+  { value: 'wealth_tab_steady', label: '分类Tab-稳健型', region: '理财页/分类Tab' },
+  { value: 'wealth_tab_aggressive', label: '分类Tab-进取型', region: '理财页/分类Tab' },
+  { value: 'wealth_tab_fund', label: '分类Tab-基金', region: '理财页/分类Tab' },
+  { value: 'wealth_tab_insurance', label: '分类Tab-保险', region: '理财页/分类Tab' },
+
+  { value: 'life_service_recharge', label: '服务-手机充值', region: '生活页/服务宫格' },
+  { value: 'life_service_utility', label: '服务-生活缴费', region: '生活页/服务宫格' },
+  { value: 'life_service_movie', label: '服务-电影票', region: '生活页/服务宫格' },
+  { value: 'life_service_takeout', label: '服务-外卖', region: '生活页/服务宫格' },
+  { value: 'life_service_bus', label: '服务-公交地铁', region: '生活页/服务宫格' },
+  { value: 'life_service_bike', label: '服务-共享单车', region: '生活页/服务宫格' },
+  { value: 'life_service_hotel', label: '服务-酒店', region: '生活页/服务宫格' },
+  { value: 'life_service_flight', label: '服务-机票', region: '生活页/服务宫格' },
+  { value: 'life_service_hospital', label: '服务-医疗挂号', region: '生活页/服务宫格' },
+  { value: 'life_service_car', label: '服务-车主服务', region: '生活页/服务宫格' },
+  { value: 'life_service_lottery', label: '服务-彩票', region: '生活页/服务宫格' },
+  { value: 'life_service_more', label: '服务-更多', region: '生活页/服务宫格' },
+  { value: 'life_promo_banner', label: '推广Banner', region: '生活页/推广位' },
+  { value: 'life_promo_btn', label: '推广按钮', region: '生活页/推广位' },
+
+  { value: 'login_username_input', label: '用户名输入框', region: '登录页/表单' },
+  { value: 'login_password_input', label: '密码输入框', region: '登录页/表单' },
+  { value: 'login_submit_btn', label: '登录按钮', region: '登录页/表单' },
+
+  { value: 'mine_balance_card', label: '资产卡片', region: '我的页/资产区' },
+  { value: 'mine_menu_account', label: '菜单-我的账户', region: '我的页/菜单' },
+  { value: 'mine_menu_transactions', label: '菜单-交易记录', region: '我的页/菜单' },
+  { value: 'mine_menu_wealth', label: '菜单-我的理财', region: '我的页/菜单' },
+  { value: 'mine_menu_creditcard', label: '菜单-信用卡管理', region: '我的页/菜单' },
+  { value: 'mine_menu_security', label: '菜单-安全设置', region: '我的页/菜单' },
+  { value: 'mine_menu_messages', label: '菜单-消息中心', region: '我的页/菜单' },
+  { value: 'mine_menu_about', label: '菜单-关于我们', region: '我的页/菜单' },
+  { value: 'mine_logout_btn', label: '退出登录', region: '我的页/操作区' },
+
+  { value: 'home_product_recommend_${productId}', label: '理财推荐-产品卡片(动态)', region: '首页/理财推荐' },
+  { value: 'wealth_product_click_${productId}', label: '产品卡片(动态)', region: '理财页/产品列表' }
+]
 
 const rules = reactive({
   eventName: [{ required: true, message: '请输入事件名称', trigger: 'blur' }],
-  eventCode: [{ required: true, message: '请输入事件编码', trigger: 'blur' }],
+  eventCode: [{ required: true, message: '请选择或输入事件编码', trigger: ['blur', 'change'] }],
   eventType: [{ required: true, message: '请选择事件类型', trigger: 'change' }],
   status: [{ required: true, message: '请选择状态', trigger: 'change' }],
   requirementId: [{ required: true, message: '请选择关联需求', trigger: 'change' }]
