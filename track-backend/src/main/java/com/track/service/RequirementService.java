@@ -67,13 +67,13 @@ public class RequirementService {
     private static final Map<String, String> STATUS_NAME_MAP = new LinkedHashMap<>();
 
     static {
-        STATUS_NAME_MAP.put(STATUS_PENDING_REVIEW, "Pending Review");
-        STATUS_NAME_MAP.put(STATUS_SCHEDULING, "Scheduling");
-        STATUS_NAME_MAP.put(STATUS_DEVELOPING, "Developing");
-        STATUS_NAME_MAP.put(STATUS_TESTING, "Testing");
-        STATUS_NAME_MAP.put(STATUS_ONLINE, "Online");
-        STATUS_NAME_MAP.put(STATUS_OFFLINE, "Offline");
-        STATUS_NAME_MAP.put(STATUS_REJECTED, "Rejected");
+        STATUS_NAME_MAP.put(STATUS_PENDING_REVIEW, "\u5f85\u5ba1\u6838");
+        STATUS_NAME_MAP.put(STATUS_SCHEDULING, "\u6392\u671f\u4e2d");
+        STATUS_NAME_MAP.put(STATUS_DEVELOPING, "\u5f00\u53d1\u4e2d");
+        STATUS_NAME_MAP.put(STATUS_TESTING, "\u6d4b\u8bd5\u4e2d");
+        STATUS_NAME_MAP.put(STATUS_ONLINE, "\u5df2\u4e0a\u7ebf");
+        STATUS_NAME_MAP.put(STATUS_OFFLINE, "\u5df2\u4e0b\u7ebf");
+        STATUS_NAME_MAP.put(STATUS_REJECTED, "\u5ba1\u6838\u4e0d\u901a\u8fc7");
     }
 
     @Autowired
@@ -576,7 +576,6 @@ public class RequirementService {
         if (STATUS_REJECTED.equals(status) && (admin || Objects.equals(requirement.getProposerId(), currentUserId))) {
             TrackRequirementAction action = new TrackRequirementAction();
             action.setActionType(ACTION_TYPE_EDIT);
-            action.setLabel("Edit");
             action.setNeedOpinion(false);
             actions.add(action);
             return actions;
@@ -647,8 +646,6 @@ public class RequirementService {
         TrackRequirementAction action = new TrackRequirementAction();
         action.setActionType(ACTION_TYPE_CHANGE_STATUS);
         action.setTargetStatus(targetStatus);
-        action.setTargetStatusName(STATUS_NAME_MAP.get(targetStatus));
-        action.setLabel("Change to " + STATUS_NAME_MAP.get(targetStatus));
         action.setNeedOpinion(needOpinion);
         actions.add(action);
     }

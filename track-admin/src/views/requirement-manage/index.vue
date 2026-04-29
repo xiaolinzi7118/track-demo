@@ -154,7 +154,7 @@
                       :key="action.targetStatus"
                       :command="action.targetStatus"
                     >
-                      {{ action.label }}
+                      {{ getStatusActionLabel(action) }}
                     </el-dropdown-item>
                   </el-dropdown-menu>
                 </template>
@@ -162,7 +162,7 @@
             </template>
             <template v-else-if="getStatusActions(row).length === 1">
               <el-button type="primary" link @click="triggerStatusAction(row, getStatusActions(row)[0])">
-                {{ getStatusActions(row)[0].label }}
+                {{ getStatusActionLabel(getStatusActions(row)[0]) }}
               </el-button>
             </template>
             <el-button
@@ -350,6 +350,11 @@ const canAdd = computed(() => userStore.hasPermission('requirement-manage:add'))
 const getStatusActions = (row) => (row.availableActions || []).filter(item => item.actionType === 'CHANGE_STATUS')
 const hasEditAction = (row) => (row.availableActions || []).some(item => item.actionType === 'EDIT')
 const findStatusAction = (row, targetStatus) => getStatusActions(row).find(item => item.targetStatus === targetStatus)
+const getTargetStatusText = (action) => statusText(action?.targetStatus) || action?.targetStatus || ''
+const getStatusActionLabel = (action) => {
+  const targetStatusText = getTargetStatusText(action)
+  return targetStatusText ? `变更为${targetStatusText}` : '变更状态'
+}
 
 const normalizeFormPayload = (data) => ({
   title: (data.title || '').trim(),
@@ -475,7 +480,7 @@ const triggerStatusAction = async (row, action) => {
   if (action.needOpinion) {
     try {
       const { value } = await ElMessageBox.prompt(
-        `请填写“${row.title}”变更为“${action.targetStatusName}”的原因`,
+        `请填写“${row.title}”变更为“${getTargetStatusText(action)}”的原因`,
         '审核不通过原因',
         {
           inputType: 'textarea',
@@ -495,7 +500,7 @@ const triggerStatusAction = async (row, action) => {
 
   try {
     await ElMessageBox.confirm(
-      `请确认是否将“${row.title}”变更为“${action.targetStatusName}”？`,
+      `请确认是否将“${row.title}”变更为“${getTargetStatusText(action)}”？`,
       '状态变更确认',
       { type: 'warning' }
     )
